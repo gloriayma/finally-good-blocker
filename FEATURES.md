@@ -15,10 +15,11 @@ its line drawing, the add-site form, and a compact editable table of blocked
 sites. Each row shows the hostname and the rule's three numeric values; ordinary
 saves happen silently. The add action is a small underlined control rather than
 a filled button, and full-width separators provide the table's only persistent
-horizontal rules. Hostnames are deliberately smaller and lighter than the
-section heading. Numeric values are centered, omit browser spinner arrows, and
-sit beneath the concise `hold`, `base`, and `extra` column labels. The add-site
-and blocked-sites headings share the same larger type treatment.
+horizontal rules. Hostnames are deliberately smaller, lighter, and normal-weight
+relative to the section heading. Numeric values use spinner-free numeric text
+fields centered within their table columns beneath the concise `hold`, `base`,
+and `extra` labels. The add-site and blocked-sites headings share the same larger
+type treatment.
 
 ### 2026-07-20 — Exact-domain and subdomain matching
 

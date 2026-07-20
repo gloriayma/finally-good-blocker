@@ -115,20 +115,30 @@
   padding-right: 0;
 }
 
+.sites-table th:nth-child(2),
+.sites-table th:nth-child(3),
+.sites-table th:nth-child(4),
+.sites-table td:nth-child(2),
+.sites-table td:nth-child(3),
+.sites-table td:nth-child(4) {
+  text-align: center;
+}
+
 .hostname-cell {
   width: 38%;
   color: var(--muted);
   font-size: 0.9rem;
-  font-weight: 400;
+  font-weight: 400 !important;
 }
 
 .scheme-input {
+  display: block;
   width: 72px !important;
   min-height: 34px !important;
   border-bottom: 0 !important;
-  appearance: textfield;
+  margin: 0 auto;
   padding: 4px 2px !important;
-  text-align: center;
+  text-align: center !important;
 }
 
 .scheme-input:focus-visible {

@@ -24,14 +24,16 @@ async function saveSettings() {
   await browser.storage.local.set({ [SETTINGS_KEY]: settings });
 }
 
-function numberInput(labelText, value, allowZero, onChange) {
+function numericInput(labelText, value, allowZero, onChange) {
   const input = document.createElement("input");
 
-  input.type = "number";
+  // This is deliberately a text input with a numeric keyboard hint. Native
+  // number inputs add spinner arrows that cannot be styled consistently.
+  input.type = "text";
+  input.inputMode = "numeric";
+  input.pattern = allowZero ? "[0-9]+" : "[1-9][0-9]*";
   input.className = "scheme-input";
   input.setAttribute("aria-label", `${labelText} in seconds`);
-  input.min = allowZero ? "0" : "1";
-  input.step = "1";
   input.value = String(value);
   input.addEventListener("change", () => onChange(input.value));
 
@@ -75,7 +77,7 @@ function renderSites() {
 
     const holdCell = document.createElement("td");
     holdCell.append(
-      numberInput("hold", site.scheme.holdThresholdSeconds, false, async (value) => {
+      numericInput("hold", site.scheme.holdThresholdSeconds, false, async (value) => {
         site.scheme.holdThresholdSeconds = Number(value);
         site.scheme = cleanScheme(site.scheme);
         await saveSettings();
@@ -85,7 +87,7 @@ function renderSites() {
 
     const baseAccessCell = document.createElement("td");
     baseAccessCell.append(
-      numberInput("base access", site.scheme.baseAccessSeconds, false, async (value) => {
+      numericInput("base access", site.scheme.baseAccessSeconds, false, async (value) => {
         site.scheme.baseAccessSeconds = Number(value);
         site.scheme = cleanScheme(site.scheme);
         await saveSettings();
@@ -95,7 +97,7 @@ function renderSites() {
 
     const extraAccessCell = document.createElement("td");
     extraAccessCell.append(
-      numberInput(
+      numericInput(
         "extra access per hold second",
         site.scheme.accessSecondsPerExtraHoldSecond,
         true,
