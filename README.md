@@ -14,6 +14,8 @@ The default rule is:
 - Access is wall-clock time, shared by every Firefox tab for that site.
 
 Each site has its own editable copy of those three values.
+While an unlocked site is active, the extension's toolbar badge counts down its
+remaining access time; hover the icon for the full duration.
 
 ## Install temporarily in Firefox
 

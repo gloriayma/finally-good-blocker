@@ -55,6 +55,15 @@ An unlock window belongs to the matching site rule, not to one tab. Other blocke
 tabs for that site open when the shared timer changes. Access continues to elapse
 while tabs or Firefox are in the background.
 
+### 2026-07-20 — Active-site toolbar countdown
+
+While the active tab is on a site with temporary access, the extension toolbar
+badge counts down its remaining wall-clock time. The badge changes with the
+active tab and disappears on unrelated or reblocked pages. Hovering the toolbar
+button shows the matching hostname and a fully written remaining duration. A
+Firefox alarm supplies each tick so the countdown survives Manifest V3
+background-page suspension without adding a new permission.
+
 ### 2026-07-20 — Automatic re-blocking at expiry
 
 Firefox schedules an alarm for the end of each access window. When it fires,
