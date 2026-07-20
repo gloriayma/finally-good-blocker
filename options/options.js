@@ -54,7 +54,7 @@ function renderSites() {
 
   const head = document.createElement("thead");
   const headRow = document.createElement("tr");
-  for (const label of ["site", "hold", "base access", "extra / hold second", ""]) {
+  for (const label of ["site", "hold", "base", "extra", ""]) {
     const heading = document.createElement("th");
     heading.scope = "col";
     heading.textContent = label;
