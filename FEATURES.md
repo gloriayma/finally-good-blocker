@@ -46,9 +46,10 @@ Blocked top-level navigations are redirected to a deliberately bare extension
 page containing only a centered hold button. Holding produces no visual feedback
 at all: there is no illustration, progress fill, countdown, ready state, earned
 access, or remaining-time display, and the `press and hold` label never changes.
-The only visible outcome is navigation after a successful release beyond the
-threshold. Releasing early or cancelling the hold earns nothing. Mouse,
-touch/pointer, Space, and Enter input are supported.
+The label uses normal rather than bold type. The only visible outcome is
+navigation after a successful release beyond the threshold. Releasing early or
+cancelling the hold earns nothing. Mouse, touch/pointer, Space, and Enter input
+are supported.
 
 ### 2026-07-20 — Wall-clock access shared across tabs
 
