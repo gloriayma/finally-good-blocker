@@ -1,0 +1,187 @@
+:root {
+  color-scheme: light;
+  --paper: #fffdf8;
+  --ink: #2d2926;
+  --muted: #746d65;
+  --faint: #aaa197;
+  --line: #d9d2c8;
+  --soft: #f2eee7;
+  --accent: #c6d1bd;
+  --accent-strong: #98aa8c;
+  --danger: #9c4238;
+  font-family: system-ui, sans-serif;
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--paper);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+main {
+  width: min(700px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: clamp(72px, 12vh, 132px) 0 80px;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 12px;
+  font-size: clamp(2rem, 6vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+
+h2 {
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+
+a,
+.link-button {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+.eyebrow {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+}
+
+.lede {
+  max-width: 600px;
+  margin-bottom: 28px;
+  font-size: 1.04rem;
+}
+
+.small-note,
+.status {
+  color: var(--muted);
+  font-size: 0.87rem;
+}
+
+.line-drawing {
+  display: block;
+  width: 150px;
+  height: 72px;
+  margin-bottom: 30px;
+  overflow: visible;
+}
+
+.line-drawing path,
+.line-drawing circle {
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.3;
+}
+
+.plain-button,
+.primary-button,
+.danger-button {
+  min-height: 42px;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  background: transparent;
+  padding: 9px 15px;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.plain-button:hover,
+.plain-button:focus-visible {
+  background: var(--soft);
+}
+
+.primary-button:hover,
+.primary-button:focus-visible {
+  background: #151311;
+}
+
+.danger-button {
+  min-height: auto;
+  border-color: transparent;
+  color: var(--danger);
+  padding: 5px 0;
+  text-decoration: underline;
+}
+
+.danger-button:hover,
+.danger-button:focus-visible {
+  text-decoration-thickness: 2px;
+}
+
+input[type="text"],
+input[type="number"] {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  padding: 8px 2px;
+}
+
+input:focus-visible {
+  border-bottom-width: 2px;
+}
+
+label {
+  display: block;
+}
+
+label > span {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.error {
+  color: var(--danger);
+}
+
+@media (max-width: 560px) {
+  main {
+    width: min(100% - 28px, 700px);
+    padding-top: 52px;
+  }
+}

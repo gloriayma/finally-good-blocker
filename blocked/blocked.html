@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>take a breath · finally-good-blocker</title>
+    <link rel="stylesheet" href="../shared/base.css" />
+    <link rel="stylesheet" href="blocked.css" />
+  </head>
+  <body>
+    <main>
+      <svg class="line-drawing pause-drawing" viewBox="0 0 150 72" aria-hidden="true">
+        <path d="M10 42c21-22 39-22 57 0s36 22 73 0" />
+        <path d="M65 18v43M85 18v43" />
+      </svg>
+
+      <p class="eyebrow">a small interruption</p>
+      <h1>take a breath.</h1>
+      <p class="lede">
+        <strong id="hostname">this site</strong> is on your blocked list.
+        Hold below only if you still mean to go there.
+      </p>
+
+      <section class="hold-section" aria-labelledby="hold-explanation">
+        <p id="hold-explanation" class="small-note">
+          Hold for <span id="threshold">10 seconds</span> to earn
+          <span id="base-access">30 seconds</span>. Each extra second held earns
+          <span id="extra-rate">5 more seconds</span>.
+        </p>
+
+        <button id="hold-button" class="hold-button" type="button">
+          <span id="hold-fill" class="hold-fill" aria-hidden="true"></span>
+          <span id="hold-label" class="hold-label">press and hold</span>
+        </button>
+
+        <p id="message" class="status" role="status" aria-live="polite">
+          Releasing before the hold completes does nothing.
+        </p>
+      </section>
+
+      <p class="settings-link">
+        <button id="open-settings" class="link-button" type="button">change this rule</button>
+      </p>
+    </main>
+
+    <script src="../shared/scheme.js"></script>
+    <script src="blocked.js"></script>
+  </body>
+</html>

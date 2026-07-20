@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "finally-good-blocker",
+  "version": "0.1.0",
+  "description": "A small Firefox site blocker that makes temporary access take deliberate effort.",
+  "permissions": [
+    "alarms",
+    "storage",
+    "webRequest",
+    "webRequestBlocking"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
+  ],
+  "background": {
+    "scripts": [
+      "shared/domain.js",
+      "shared/scheme.js",
+      "background.js"
+    ]
+  },
+  "action": {
+    "default_title": "Open finally-good-blocker settings",
+    "default_icon": "icons/icon.svg"
+  },
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "blocked/blocked.html"
+      ],
+      "matches": [
+        "*://*/*"
+      ]
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "finally-good-blocker@gloria.ma",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  }
+}

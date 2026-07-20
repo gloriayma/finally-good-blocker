@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>finally-good-blocker</title>
+    <link rel="stylesheet" href="../shared/base.css" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <svg class="line-drawing" viewBox="0 0 150 72" aria-hidden="true">
+        <path d="M11 57c21-1 31-14 42-28 8-10 18-14 29-7 8 5 9 18 20 19 12 2 23-12 37-28" />
+        <circle cx="11" cy="57" r="3" />
+        <circle cx="139" cy="13" r="3" />
+      </svg>
+
+      <p class="eyebrow">finally, a little friction</p>
+      <h1>finally-good-blocker</h1>
+      <p class="lede">
+        Add a site. When you visit it, hold deliberately to earn a short window
+        of access.
+      </p>
+
+      <section class="add-section" aria-labelledby="add-heading">
+        <h2 id="add-heading">add a site</h2>
+        <form id="add-site-form" class="add-form">
+          <label class="domain-field">
+            <span>domain or URL</span>
+            <input
+              id="site-input"
+              name="site"
+              type="text"
+              inputmode="url"
+              placeholder="reddit.com"
+              autocomplete="off"
+              required
+            />
+          </label>
+          <button class="primary-button" type="submit">block it</button>
+        </form>
+        <p class="small-note">
+          Adding <code>reddit.com</code> covers every path on that domain and its
+          subdomains, but never a lookalike such as <code>notreddit.com</code>.
+          Firefox asks for access only to the domain you add.
+        </p>
+        <p id="form-status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="sites-section" aria-labelledby="sites-heading">
+        <div class="section-heading">
+          <h2 id="sites-heading">blocked sites</h2>
+          <span id="save-status" class="status" aria-live="polite"></span>
+        </div>
+        <div id="site-list">
+          <p class="empty-state">No sites yet.</p>
+        </div>
+      </section>
+
+      <footer>
+        <p class="small-note">
+          All settings and timers stay in Firefox on this device. Nothing is
+          collected or sent anywhere.
+        </p>
+      </footer>
+    </main>
+
+    <script src="../shared/domain.js"></script>
+    <script src="../shared/scheme.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

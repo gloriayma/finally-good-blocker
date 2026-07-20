@@ -1,0 +1,62 @@
+body {
+  user-select: none;
+}
+
+.pause-drawing {
+  width: 166px;
+}
+
+.hold-section {
+  margin-top: 44px;
+}
+
+.hold-button {
+  position: relative;
+  display: block;
+  width: min(100%, 430px);
+  min-height: 84px;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  margin: 16px 0 12px;
+  overflow: hidden;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  isolation: isolate;
+  touch-action: none;
+}
+
+.hold-button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+
+.hold-fill {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.hold-button.is-ready .hold-fill {
+  background: var(--accent-strong);
+}
+
+.hold-label {
+  position: relative;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.settings-link {
+  margin-top: 50px;
+}
+
+.link-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}

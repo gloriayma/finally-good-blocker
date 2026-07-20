@@ -1,0 +1,10 @@
+{
+  "name": "finally-good-blocker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A deliberate hold-to-unlock site blocker for Firefox.",
+  "scripts": {
+    "test": "node --test",
+    "check": "node scripts/check-extension.js"
+  }
+}

@@ -1,0 +1,85 @@
+.add-section {
+  margin-top: 46px;
+}
+
+.add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 16px;
+  margin: 18px 0 12px;
+}
+
+.sites-section {
+  margin-top: 58px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 10px;
+}
+
+.section-heading h2 {
+  margin-bottom: 0;
+}
+
+.empty-state {
+  color: var(--muted);
+  padding: 28px 0;
+}
+
+.site-card {
+  border-bottom: 1px solid var(--line);
+  padding: 26px 0 30px;
+}
+
+.site-card-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.site-card-heading h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.scheme-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.formula {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+}
+
+footer {
+  border-top: 1px solid var(--line);
+  margin-top: 64px;
+  padding-top: 18px;
+}
+
+@media (max-width: 620px) {
+  .add-form,
+  .scheme-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .add-form .primary-button {
+    justify-self: start;
+  }
+}
