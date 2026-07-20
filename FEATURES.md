@@ -46,7 +46,8 @@ page containing only a line-drawn pause graphic and the hold button. The button
 fills during the initial hold but its label stays `press and hold`: it never
 shows a countdown, earned access, or remaining time. It unlocks only on release
 after the threshold. Releasing early or cancelling the hold earns nothing.
-Mouse, touch/pointer, Space, and Enter input are supported.
+The illustration and button are centered together. Mouse, touch/pointer, Space,
+and Enter input are supported.
 
 ### 2026-07-20 — Wall-clock access shared across tabs
 

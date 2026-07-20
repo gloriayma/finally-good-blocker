@@ -2,6 +2,12 @@ body {
   user-select: none;
 }
 
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .pause-drawing {
   width: 166px;
   margin-bottom: 44px;
