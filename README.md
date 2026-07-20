@@ -6,6 +6,16 @@ time.
 
 It targets Firefox 142 and newer.
 
+## Interface
+
+### Settings
+
+![The minimal finally-good-blocker settings screen](docs/options-screen.svg)
+
+### Blocking page
+
+![The blocking page with only its centered hold button](docs/blocking-screen.svg)
+
 The default rule is:
 
 - Hold for 10 seconds to earn 30 seconds of access.
