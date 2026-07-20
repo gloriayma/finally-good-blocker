@@ -13,7 +13,10 @@ their hostname, so paths, query strings, fragments, schemes, and ports do not
 become part of the saved rule. The initial list is empty. The page contains only
 its line drawing, the add-site form, and a compact editable table of blocked
 sites. Each row shows the hostname and the rule's three numeric values; ordinary
-saves happen silently.
+saves happen silently. The add action is a small underlined control rather than
+a filled button, and full-width separators provide the table's only persistent
+horizontal rules. Hostnames are deliberately smaller and lighter than the
+section heading.
 
 ### 2026-07-20 — Exact-domain and subdomain matching
 
