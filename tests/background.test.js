@@ -6,8 +6,16 @@ const vm = require("node:vm");
 
 const projectRoot = path.resolve(__dirname, "..");
 
-function loadBackground({ settings, accessUntilBySiteId = {}, now = 1_000_000, tabs = [] }) {
-  const storage = { settings, accessUntilBySiteId };
+function loadBackground({
+  settings,
+  accessUntilBySiteId = {},
+  trackedSites,
+  activeTrackedVisit,
+  now = 1_000_000,
+  tabs = [],
+  focusedWindow,
+}) {
+  const storage = { settings, accessUntilBySiteId, trackedSites, activeTrackedVisit };
   const listeners = {};
   const alarmCreations = [];
   const alarmClears = [];
@@ -15,6 +23,11 @@ function loadBackground({ settings, accessUntilBySiteId = {}, now = 1_000_000, t
   const badgeTexts = [];
   const badgeBackgrounds = [];
   const actionTitles = [];
+  let currentFocusedWindow = focusedWindow || {
+    id: 1,
+    focused: true,
+    tabs,
+  };
 
   class FakeDate extends Date {
     static now() {
@@ -64,6 +77,7 @@ function loadBackground({ settings, accessUntilBySiteId = {}, now = 1_000_000, t
         return tabs;
       },
       onActivated: { addListener(listener) { listeners.tabActivated = listener; } },
+      onRemoved: { addListener(listener) { listeners.tabRemoved = listener; } },
       onUpdated: { addListener(listener) { listeners.tabUpdated = listener; } },
       async update(tabId, change) {
         tabUpdates.push({ tabId, change });
@@ -71,7 +85,9 @@ function loadBackground({ settings, accessUntilBySiteId = {}, now = 1_000_000, t
       },
     },
     windows: {
+      async getLastFocused() { return currentFocusedWindow; },
       onFocusChanged: { addListener(listener) { listeners.windowFocused = listener; } },
+      onRemoved: { addListener(listener) { listeners.windowRemoved = listener; } },
     },
     webRequest: {
       onBeforeRequest: {
@@ -105,8 +121,13 @@ function loadBackground({ settings, accessUntilBySiteId = {}, now = 1_000_000, t
     badgeBackgrounds,
     actionTitles,
     setNow(value) { now = value; },
+    setFocusedWindow(value) { currentFocusedWindow = value; },
     updateBadge() {
       return vm.runInContext("updateActiveTabBadge()", context);
+    },
+    reconcileTracking(options = {}) {
+      context.__trackingOptions = options;
+      return vm.runInContext("reconcileTrackedVisit(__trackingOptions)", context);
     },
     redirectExpired(siteId) {
       return vm.runInContext(`redirectTabsWhenAccessExpires(${JSON.stringify(siteId)})`, context);
@@ -225,4 +246,147 @@ test("expiry re-blocks matching open tabs and leaves lookalikes alone", async ()
   assert.equal(app.tabUpdates.length, 1);
   assert.equal(app.tabUpdates[0].tabId, 1);
   assert.match(app.tabUpdates[0].change.url, /blocked\/blocked\.html/);
+});
+
+test("starts a durable visit for the focused tracked site", async () => {
+  const app = loadBackground({
+    settings: { version: 1, sites: [redditSite] },
+    tabs: [{ id: 7, active: true, url: "https://old.reddit.com/r/firefox" }],
+  });
+
+  await app.reconcileTracking();
+
+  assert.deepEqual(JSON.parse(JSON.stringify(app.storage.trackedSites)), {
+    version: 1,
+    hostnames: ["reddit.com"],
+  });
+  assert.equal(app.storage.activeTrackedVisit.source, "firefox");
+  assert.equal(app.storage.activeTrackedVisit.kind, "website");
+  assert.equal(app.storage.activeTrackedVisit.hostname, "reddit.com");
+  assert.equal(app.storage.activeTrackedVisit.startedAt, 1_000_000);
+  assert.equal(app.storage.activeTrackedVisit.lastSeenAt, 1_000_000);
+  assert.equal(app.storage.activeTrackedVisit.tabId, 7);
+  assert.equal(app.storage.activeTrackedVisit.windowId, 1);
+});
+
+test("finishes a visit when the user leaves the tracked site", async () => {
+  const app = loadBackground({
+    settings: { version: 1, sites: [] },
+    trackedSites: { version: 1, hostnames: ["reddit.com"] },
+    tabs: [{ id: 7, active: true, url: "https://reddit.com/" }],
+  });
+
+  await app.reconcileTracking();
+  const visitId = app.storage.activeTrackedVisit.id;
+
+  app.setNow(1_012_345);
+  app.setFocusedWindow({
+    id: 1,
+    focused: true,
+    tabs: [{ id: 8, active: true, url: "https://example.com/" }],
+  });
+  await app.reconcileTracking();
+
+  assert.equal(app.storage.activeTrackedVisit, null);
+  assert.deepEqual(JSON.parse(JSON.stringify(app.storage[`siteVisit:${visitId}`])), {
+    version: 1,
+    id: visitId,
+    source: "firefox",
+    kind: "website",
+    hostname: "reddit.com",
+    startedAt: 1_000_000,
+    endedAt: 1_012_345,
+    durationMilliseconds: 12_345,
+    tabId: 7,
+    windowId: 1,
+  });
+});
+
+test("keeps tracking after the site has been removed from blocking", async () => {
+  const app = loadBackground({
+    settings: { version: 1, sites: [] },
+    trackedSites: { version: 1, hostnames: ["reddit.com"] },
+    tabs: [{ id: 4, active: true, url: "https://reddit.com/" }],
+  });
+
+  await app.reconcileTracking();
+
+  assert.equal(app.storage.activeTrackedVisit.hostname, "reddit.com");
+  assert.equal(app.storage.activeTrackedVisit.tabId, 4);
+});
+
+test("switching between two tabs on one site creates two visits", async () => {
+  const app = loadBackground({
+    settings: { version: 1, sites: [] },
+    trackedSites: { version: 1, hostnames: ["reddit.com"] },
+    tabs: [{ id: 1, active: true, url: "https://reddit.com/" }],
+  });
+
+  await app.reconcileTracking();
+  const firstVisitId = app.storage.activeTrackedVisit.id;
+
+  app.setNow(1_005_000);
+  app.setFocusedWindow({
+    id: 1,
+    focused: true,
+    tabs: [{ id: 2, active: true, url: "https://old.reddit.com/" }],
+  });
+  await app.reconcileTracking();
+
+  assert.equal(app.storage[`siteVisit:${firstVisitId}`].durationMilliseconds, 5_000);
+  assert.equal(app.storage.activeTrackedVisit.hostname, "reddit.com");
+  assert.equal(app.storage.activeTrackedVisit.tabId, 2);
+  assert.notEqual(app.storage.activeTrackedVisit.id, firstVisitId);
+});
+
+test("moving focus away from Firefox ends the visit", async () => {
+  const app = loadBackground({
+    settings: { version: 1, sites: [] },
+    trackedSites: { version: 1, hostnames: ["reddit.com"] },
+    tabs: [{ id: 3, active: true, url: "https://reddit.com/" }],
+  });
+
+  await app.reconcileTracking();
+  const visitId = app.storage.activeTrackedVisit.id;
+
+  app.setNow(1_003_000);
+  app.setFocusedWindow({
+    id: 1,
+    focused: false,
+    tabs: [{ id: 3, active: true, url: "https://reddit.com/" }],
+  });
+  await app.reconcileTracking();
+
+  assert.equal(app.storage.activeTrackedVisit, null);
+  assert.equal(app.storage[`siteVisit:${visitId}`].durationMilliseconds, 3_000);
+});
+
+test("browser startup does not count time Firefox was closed", async () => {
+  const app = loadBackground({
+    settings: { version: 1, sites: [] },
+    trackedSites: { version: 1, hostnames: ["reddit.com"] },
+    activeTrackedVisit: {
+      version: 1,
+      id: "old-browser-session",
+      source: "firefox",
+      kind: "website",
+      hostname: "reddit.com",
+      startedAt: 900_000,
+      lastSeenAt: 950_000,
+      tabId: 7,
+      windowId: 1,
+    },
+    now: 1_000_000,
+    tabs: [{ id: 7, active: true, url: "https://reddit.com/" }],
+  });
+
+  await app.reconcileTracking({ startNewBrowserSession: true });
+
+  assert.equal(app.storage["siteVisit:old-browser-session"].endedAt, 950_000);
+  assert.equal(
+    app.storage["siteVisit:old-browser-session"].durationMilliseconds,
+    50_000,
+  );
+  assert.equal(app.storage.activeTrackedVisit.startedAt, 1_000_000);
+  assert.notEqual(app.storage.activeTrackedVisit.id, "old-browser-session");
 });

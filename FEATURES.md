@@ -57,6 +57,36 @@ An unlock window belongs to the matching site rule, not to one tab. Other blocke
 tabs for that site open when the shared timer changes. Access continues to elapse
 while tabs or Firefox are in the background.
 
+### 2026-07-20 — Persistent per-visit site-time history
+
+Every hostname ever added to the block list is also remembered in a separate
+tracking list. Removing its blocking rule does not remove that hostname or its
+Firefox host permission, so future visits continue to be recorded without
+continuing to block the site.
+
+A visit is time spent with a matching page as the active tab in Firefox's
+focused window. It starts when that page becomes active and ends when the user
+switches tabs, navigates away, closes the tab or window, or moves focus away
+from Firefox. Returning to an already-open tracked tab starts a new visit.
+Subdomains are attributed to the longest matching tracked hostname, using the
+same exact-domain/subdomain rule as blocking. Time spent on the extension's
+blocking page is not site time.
+
+Completed visits are append-only local-storage records named `siteVisit:<id>`.
+Each stores a version, stable visit ID, `firefox` source, `website` kind,
+configured hostname, start and end timestamps, duration in milliseconds, and
+the Firefox-session tab and window IDs. The in-progress visit is stored
+separately and checkpointed every 30 seconds. On Firefox startup, an unfinished
+visit is closed at its last checkpoint so time while Firefox was closed is not
+counted; an abrupt shutdown can therefore undercount by up to roughly 30
+seconds. No history-pruning policy or history interface exists yet.
+
+Only configured hostnames and timing metadata are saved. Page paths, query
+strings, titles, contents, clicks, and keystrokes are not stored or transmitted.
+The extension requests `unlimitedStorage` because the requested history is not
+automatically discarded, though storage can still fail if the device or Firefox
+profile reaches a broader storage limit.
+
 ### 2026-07-20 — Active-site toolbar countdown
 
 While the active tab is on a site with temporary access, the extension toolbar
@@ -77,9 +107,10 @@ Firefox restarts.
 
 The extension begins with no website access. Adding a site asks Firefox for
 access to that hostname and its subdomains so top-level navigation can be
-intercepted. Removing a site removes the matching permission request when
-possible. Page contents are never read or modified; all configuration and timer
-state stays in local extension storage.
+intercepted and active visits can be timed. Removing a blocking rule deliberately
+retains the matching permission because tracking continues. Page contents are
+never read or modified; configuration, timers, and visit records stay in local
+extension storage.
 
 ### 2026-07-20 — Minimal `gloria.ma`-inspired presentation
 
@@ -112,3 +143,13 @@ piecewise function. The exact syntax and error model still need design.
 Provide a graph drawer where the user can sketch the hold-time → access-time
 curve directly, then inspect and edit the resulting function. How freehand input
 becomes a stable monotone function still needs design.
+
+### Unified Firefox and macOS activity history
+
+When the native macOS blocker exists, a local Firefox native-messaging host can
+copy browser visit records into the macOS app's activity database. Application
+sessions would use the same conceptual fields but identify a bundle identifier
+instead of a hostname. Delivery should be acknowledged and deduplicated by the
+stable visit ID so browser or app restarts cannot create duplicate history. No
+native host, cross-process synchronization, macOS activity database, or combined
+history interface is implemented yet.

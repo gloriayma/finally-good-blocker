@@ -6,6 +6,7 @@
   "permissions": [
     "alarms",
     "storage",
+    "unlimitedStorage",
     "webRequest",
     "webRequestBlocking"
   ],

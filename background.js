@@ -5,6 +5,11 @@ const SETTINGS_KEY = "settings";
 const ACCESS_KEY = "accessUntilBySiteId";
 const ALARM_PREFIX = "access-expired:";
 const BADGE_ALARM = "active-tab-badge-tick";
+const TRACKED_SITES_KEY = "trackedSites";
+const ACTIVE_VISIT_KEY = "activeTrackedVisit";
+const VISIT_KEY_PREFIX = "siteVisit:";
+const TRACKING_HEARTBEAT_ALARM = "tracking-heartbeat";
+const TRACKING_HEARTBEAT_MINUTES = 0.5;
 
 async function readState() {
   const stored = await browser.storage.local.get([SETTINGS_KEY, ACCESS_KEY]);
@@ -18,6 +23,190 @@ async function readState() {
     settings,
     accessUntilBySiteId: stored[ACCESS_KEY] || {},
   };
+}
+
+function makeVisitId(now, tabId) {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${now}-${tabId}-${Math.random().toString(16).slice(2)}`;
+}
+
+async function readTrackingState() {
+  const stored = await browser.storage.local.get([
+    SETTINGS_KEY,
+    TRACKED_SITES_KEY,
+    ACTIVE_VISIT_KEY,
+  ]);
+
+  const savedHostnames = Array.isArray(stored[TRACKED_SITES_KEY]?.hostnames)
+    ? stored[TRACKED_SITES_KEY].hostnames
+    : [];
+  const configuredSites = Array.isArray(stored[SETTINGS_KEY]?.sites)
+    ? stored[SETTINGS_KEY].sites
+    : [];
+
+  // The tracking list is intentionally separate from the current block list.
+  // Current rules are copied into it, but deleting a rule never removes its
+  // hostname. That site therefore keeps accumulating visits after unblocking.
+  const trackedHostnames = [...new Set([
+    ...savedHostnames.filter((hostname) => typeof hostname === "string"),
+    ...configuredSites
+      .map((site) => site.hostname)
+      .filter((hostname) => typeof hostname === "string"),
+  ])];
+
+  if (
+    trackedHostnames.length !== savedHostnames.length ||
+    trackedHostnames.some((hostname, index) => hostname !== savedHostnames[index])
+  ) {
+    await browser.storage.local.set({
+      [TRACKED_SITES_KEY]: { version: 1, hostnames: trackedHostnames },
+    });
+  }
+
+  const activeVisit = stored[ACTIVE_VISIT_KEY];
+  const hasValidActiveVisit =
+    activeVisit &&
+    activeVisit.version === 1 &&
+    typeof activeVisit.id === "string" &&
+    typeof activeVisit.hostname === "string" &&
+    Number.isFinite(activeVisit.startedAt) &&
+    Number.isFinite(activeVisit.lastSeenAt) &&
+    Number.isInteger(activeVisit.tabId) &&
+    Number.isInteger(activeVisit.windowId);
+
+  return {
+    trackedHostnames,
+    activeVisit: hasValidActiveVisit ? activeVisit : null,
+  };
+}
+
+async function getFocusedTrackedPage(trackedHostnames) {
+  let focusedWindow;
+  try {
+    focusedWindow = await browser.windows.getLastFocused({ populate: true });
+  } catch {
+    return null;
+  }
+
+  if (!focusedWindow?.focused || !Array.isArray(focusedWindow.tabs)) {
+    return null;
+  }
+
+  const activeTab = focusedWindow.tabs.find((tab) => tab.active);
+  if (!activeTab || activeTab.id == null || !activeTab.url) {
+    return null;
+  }
+
+  let page;
+  try {
+    page = new URL(activeTab.url);
+  } catch {
+    return null;
+  }
+
+  if (page.protocol !== "http:" && page.protocol !== "https:") {
+    return null;
+  }
+
+  const hostname = page.hostname.toLowerCase().replace(/\.$/, "");
+
+  // Use the same literal matching rule as blocking. The longest saved hostname
+  // wins when both a parent domain and a subdomain have ever been configured.
+  const matchingHostnames = trackedHostnames.filter((trackedHostname) =>
+    hostnameMatchesSite(hostname, trackedHostname),
+  );
+  matchingHostnames.sort((a, b) => b.length - a.length);
+
+  if (!matchingHostnames[0]) {
+    return null;
+  }
+
+  return {
+    hostname: matchingHostnames[0],
+    tabId: activeTab.id,
+    windowId: focusedWindow.id,
+  };
+}
+
+async function reconcileTrackedVisit({ startNewBrowserSession = false } = {}) {
+  const now = Date.now();
+  const { trackedHostnames, activeVisit } = await readTrackingState();
+  const currentPage = await getFocusedTrackedPage(trackedHostnames);
+
+  const continuingSameVisit =
+    !startNewBrowserSession &&
+    activeVisit &&
+    currentPage &&
+    activeVisit.hostname === currentPage.hostname &&
+    activeVisit.tabId === currentPage.tabId &&
+    activeVisit.windowId === currentPage.windowId;
+
+  if (continuingSameVisit) {
+    await browser.storage.local.set({
+      [ACTIVE_VISIT_KEY]: { ...activeVisit, lastSeenAt: now },
+    });
+    return;
+  }
+
+  if (!activeVisit && !currentPage) {
+    return;
+  }
+
+  const updates = {};
+
+  if (activeVisit) {
+    // runtime.onStartup marks a new Firefox session. In that case tab IDs may
+    // have been reused, so close the prior visit at its last heartbeat instead
+    // of counting time while Firefox was closed.
+    const requestedEnd = startNewBrowserSession ? activeVisit.lastSeenAt : now;
+    const endedAt = Math.max(activeVisit.startedAt, Math.min(now, requestedEnd));
+    updates[`${VISIT_KEY_PREFIX}${activeVisit.id}`] = {
+      version: 1,
+      id: activeVisit.id,
+      source: "firefox",
+      kind: "website",
+      hostname: activeVisit.hostname,
+      startedAt: activeVisit.startedAt,
+      endedAt,
+      durationMilliseconds: endedAt - activeVisit.startedAt,
+      tabId: activeVisit.tabId,
+      windowId: activeVisit.windowId,
+    };
+  }
+
+  updates[ACTIVE_VISIT_KEY] = currentPage
+    ? {
+        version: 1,
+        id: makeVisitId(now, currentPage.tabId),
+        source: "firefox",
+        kind: "website",
+        hostname: currentPage.hostname,
+        startedAt: now,
+        lastSeenAt: now,
+        tabId: currentPage.tabId,
+        windowId: currentPage.windowId,
+      }
+    : null;
+
+  await browser.storage.local.set(updates);
+}
+
+let trackingQueue = Promise.resolve();
+
+function scheduleTrackingReconcile(options) {
+  trackingQueue = trackingQueue
+    .then(() => reconcileTrackedVisit(options))
+    .catch((error) => console.error(error));
+  return trackingQueue;
+}
+
+function ensureTrackingHeartbeat() {
+  browser.alarms.create(TRACKING_HEARTBEAT_ALARM, {
+    periodInMinutes: TRACKING_HEARTBEAT_MINUTES,
+  });
 }
 
 function makeBlockedPageUrl(siteId, targetUrl) {
@@ -306,6 +495,11 @@ browser.alarms.onAlarm.addListener((alarm) => {
     return;
   }
 
+  if (alarm.name === TRACKING_HEARTBEAT_ALARM) {
+    scheduleTrackingReconcile();
+    return;
+  }
+
   if (!alarm.name.startsWith(ALARM_PREFIX)) {
     return;
   }
@@ -316,21 +510,36 @@ browser.alarms.onAlarm.addListener((alarm) => {
 
 browser.tabs.onActivated.addListener(() => {
   updateActiveTabBadge().catch(console.error);
+  scheduleTrackingReconcile();
 });
 
 browser.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (tab.active && (changeInfo.url || changeInfo.status === "complete")) {
     updateActiveTabBadge().catch(console.error);
+    scheduleTrackingReconcile();
   }
+});
+
+browser.tabs.onRemoved.addListener(() => {
+  scheduleTrackingReconcile();
 });
 
 browser.windows.onFocusChanged.addListener(() => {
   updateActiveTabBadge().catch(console.error);
+  scheduleTrackingReconcile();
+});
+
+browser.windows.onRemoved.addListener(() => {
+  scheduleTrackingReconcile();
 });
 
 browser.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === "local" && (changes[SETTINGS_KEY] || changes[ACCESS_KEY])) {
     updateActiveTabBadge().catch(console.error);
+  }
+
+  if (areaName === "local" && changes[SETTINGS_KEY]) {
+    scheduleTrackingReconcile();
   }
 });
 
@@ -353,11 +562,15 @@ async function restoreAccessAlarms() {
 browser.runtime.onStartup.addListener(() => {
   restoreAccessAlarms().catch(console.error);
   updateActiveTabBadge().catch(console.error);
+  ensureTrackingHeartbeat();
+  scheduleTrackingReconcile({ startNewBrowserSession: true });
 });
 
 browser.runtime.onInstalled.addListener(() => {
   restoreAccessAlarms().catch(console.error);
   updateActiveTabBadge().catch(console.error);
+  ensureTrackingHeartbeat();
+  scheduleTrackingReconcile();
 });
 
 browser.action.onClicked.addListener(() => {

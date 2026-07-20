@@ -27,6 +27,19 @@ Each site has its own editable copy of those three values.
 While an unlocked site is active, the extension's toolbar badge counts down its
 remaining access time; hover the icon for the full duration.
 
+## Local site-time history
+
+The extension records time spent on every hostname that has ever been added.
+A visit means a matching page is the active tab in the focused Firefox window.
+Switching tabs, navigating away, closing the tab, or focusing another app ends
+that visit; returning starts another one. Removing a hostname from the block
+list stops blocking it but deliberately keeps tracking it.
+
+Each completed visit is kept as its own `siteVisit:<id>` record in Firefox local
+extension storage, containing the configured hostname, start and end times, and
+duration. The current visit is checkpointed every 30 seconds. There is not yet a
+history screen or automatic pruning.
+
 ## Install temporarily in Firefox
 
 1. Open `about:debugging` in Firefox.
@@ -41,8 +54,10 @@ self-installation requires signing through Mozilla Add-ons.
 ## Domain matching and permissions
 
 When a domain is added, Firefox asks for permission to access only that hostname
-and its subdomains. For example, the requested WebExtension match pattern for
-`reddit.com` is:
+and its subdomains. That permission is used to intercept blocked navigation and
+to see when the hostname is the active tab. Removing a blocking rule retains the
+permission because site-time tracking continues. For example, the requested
+WebExtension match pattern for `reddit.com` is:
 
 ```text
 *://*.reddit.com/*
@@ -59,9 +74,10 @@ The leading dot in the second comparison means `old.reddit.com` matches while
 `notreddit.com` does not. All HTTP and HTTPS paths match. If rules overlap, the
 longest (most specific) saved hostname wins.
 
-The extension reads top-level navigation URLs only to compare them with the
-locally saved block list. It does not read or modify page contents, and it does
-not collect or transmit data.
+The extension compares navigation and active-tab URLs with locally saved
+hostnames. It stores only the matched hostname and visit timing—not full URLs,
+titles, page contents, clicks, or keystrokes. Nothing is transmitted outside
+Firefox on this device. Uninstalling the extension removes its local storage.
 
 ## Development
 

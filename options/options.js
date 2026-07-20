@@ -3,6 +3,7 @@ const { DEFAULT_SCHEME, cleanScheme } = FinallyGoodBlockerScheme;
 
 const SETTINGS_KEY = "settings";
 const ACCESS_KEY = "accessUntilBySiteId";
+const TRACKED_SITES_KEY = "trackedSites";
 const ALARM_PREFIX = "access-expired:";
 
 const addForm = document.querySelector("#add-site-form");
@@ -124,10 +125,9 @@ function renderSites() {
       await browser.storage.local.set({ [ACCESS_KEY]: accessUntilBySiteId });
       await browser.alarms.clear(`${ALARM_PREFIX}${site.id}`);
 
-      // This is the exact permission that was requested when the site was added.
-      // Firefox may keep access if a broader, still-saved rule also covers it.
-      const originPattern = `*://*.${site.hostname}/*`;
-      await browser.permissions.remove({ origins: [originPattern] });
+      // Removing a rule stops blocking only. Its hostname stays in the separate
+      // tracking list, and its host permission stays granted so Firefox can
+      // continue reporting active visits to this site.
       renderSites();
     });
 
@@ -186,7 +186,19 @@ addForm.addEventListener("submit", async (event) => {
     hostname,
     scheme: { ...DEFAULT_SCHEME },
   });
-  await saveSettings();
+
+  const storedTracking = await browser.storage.local.get(TRACKED_SITES_KEY);
+  const trackedHostnames = Array.isArray(storedTracking[TRACKED_SITES_KEY]?.hostnames)
+    ? storedTracking[TRACKED_SITES_KEY].hostnames
+    : [];
+
+  await browser.storage.local.set({
+    [SETTINGS_KEY]: settings,
+    [TRACKED_SITES_KEY]: {
+      version: 1,
+      hostnames: [...new Set([...trackedHostnames, hostname])],
+    },
+  });
   siteInput.value = "";
   renderSites();
 });

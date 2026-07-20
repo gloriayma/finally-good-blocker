@@ -24,7 +24,7 @@ if (manifest.manifest_version !== 3) {
 }
 
 if (manifest.browser_specific_settings?.gecko?.data_collection_permissions?.required?.[0] !== "none") {
-  throw new Error("The manifest must explicitly declare that no data is collected.");
+  throw new Error("The manifest must explicitly declare that no data leaves the extension.");
 }
 
 console.log(`manifest.json is valid JSON and all ${referencedFiles.length} referenced files exist.`);
