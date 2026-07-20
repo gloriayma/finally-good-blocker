@@ -4,10 +4,7 @@ body {
 
 .pause-drawing {
   width: 166px;
-}
-
-.hold-section {
-  margin-top: 44px;
+  margin-bottom: 44px;
 }
 
 .hold-button {
@@ -17,7 +14,7 @@ body {
   min-height: 84px;
   border: 1px solid var(--ink);
   border-radius: 3px;
-  margin: 16px 0 12px;
+  margin: 0;
   overflow: hidden;
   background: transparent;
   color: var(--ink);
@@ -48,15 +45,4 @@ body {
   position: relative;
   font-size: 1.1rem;
   font-weight: 650;
-}
-
-.settings-link {
-  margin-top: 50px;
-}
-
-.link-button {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
 }

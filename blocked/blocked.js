@@ -1,14 +1,7 @@
 const { calculateEarnedSeconds } = FinallyGoodBlockerScheme;
 
-const hostnameElement = document.querySelector("#hostname");
-const thresholdElement = document.querySelector("#threshold");
-const baseAccessElement = document.querySelector("#base-access");
-const extraRateElement = document.querySelector("#extra-rate");
 const holdButton = document.querySelector("#hold-button");
 const holdFill = document.querySelector("#hold-fill");
-const holdLabel = document.querySelector("#hold-label");
-const message = document.querySelector("#message");
-const openSettings = document.querySelector("#open-settings");
 
 const query = new URLSearchParams(location.search);
 const siteId = query.get("site");
@@ -20,27 +13,12 @@ let heldSince = null;
 let animationFrame = null;
 let unlocking = false;
 
-function displayDuration(seconds) {
-  if (seconds < 60) {
-    return `${seconds} second${seconds === 1 ? "" : "s"}`;
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  if (remainingSeconds === 0) {
-    return `${minutes} minute${minutes === 1 ? "" : "s"}`;
-  }
-
-  return `${minutes}m ${remainingSeconds}s`;
-}
-
 function resetButton() {
   heldSince = null;
   cancelAnimationFrame(animationFrame);
   animationFrame = null;
   holdFill.style.transform = "scaleX(0)";
   holdButton.classList.remove("is-ready");
-  holdLabel.textContent = "press and hold";
 }
 
 function updateWhileHeld() {
@@ -52,16 +30,11 @@ function updateWhileHeld() {
   const heldSeconds = heldMilliseconds / 1000;
   const threshold = site.scheme.holdThresholdSeconds;
   const initialProgress = Math.min(heldSeconds / threshold, 1);
-  const earnedSeconds = calculateEarnedSeconds(heldMilliseconds, site.scheme);
 
   holdFill.style.transform = `scaleX(${initialProgress})`;
 
-  if (earnedSeconds === 0) {
-    const remaining = Math.max(1, Math.ceil(threshold - heldSeconds));
-    holdLabel.textContent = `keep holding · ${remaining}s`;
-  } else {
+  if (heldSeconds >= threshold) {
     holdButton.classList.add("is-ready");
-    holdLabel.textContent = `release for ${displayDuration(earnedSeconds)}`;
   }
 
   animationFrame = requestAnimationFrame(updateWhileHeld);
@@ -81,7 +54,6 @@ function beginHold(event) {
     holdButton.setPointerCapture(event.pointerId);
   }
   heldSince = performance.now();
-  message.textContent = "Stay with the choice.";
   updateWhileHeld();
 }
 
@@ -96,12 +68,10 @@ async function finishHold(event, cancelled = false) {
 
   if (cancelled || earnedSeconds <= 0) {
     resetButton();
-    message.textContent = "Not unlocked. Releasing early does nothing.";
     return;
   }
 
   unlocking = true;
-  holdLabel.textContent = "opening…";
 
   const response = await browser.runtime.sendMessage({
     type: "unlock-site",
@@ -113,8 +83,7 @@ async function finishHold(event, cancelled = false) {
   if (!response?.ok) {
     unlocking = false;
     resetButton();
-    message.className = "status error";
-    message.textContent = response?.error || "Could not unlock this site.";
+    console.error(response?.error || "Could not unlock this site.");
     return;
   }
 
@@ -138,10 +107,6 @@ holdButton.addEventListener("keyup", (event) => {
 });
 
 window.addEventListener("blur", (event) => finishHold(event, true));
-
-openSettings.addEventListener("click", () => {
-  browser.runtime.openOptionsPage();
-});
 
 browser.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local" || !changes.accessUntilBySiteId || !site) {
@@ -177,16 +142,9 @@ async function start() {
     return;
   }
 
-  hostnameElement.textContent = site.hostname;
-  thresholdElement.textContent = displayDuration(site.scheme.holdThresholdSeconds);
-  baseAccessElement.textContent = displayDuration(site.scheme.baseAccessSeconds);
-  extraRateElement.textContent = `${displayDuration(
-    site.scheme.accessSecondsPerExtraHoldSecond,
-  )} more`;
 }
 
 start().catch((error) => {
   holdButton.disabled = true;
-  message.className = "status error";
-  message.textContent = error.message;
+  console.error(error);
 });

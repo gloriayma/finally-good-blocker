@@ -33,10 +33,12 @@ of additional access for each extra second held.
 
 ### 2026-07-20 — Hold-to-unlock blocking page
 
-Blocked top-level navigations are redirected to a quiet extension page. Its
-button fills during the initial hold, previews the access currently earned, and
-unlocks only on release after the threshold. Releasing early or cancelling the
-hold earns nothing. Mouse, touch/pointer, Space, and Enter input are supported.
+Blocked top-level navigations are redirected to a deliberately bare extension
+page containing only a line-drawn pause graphic and the hold button. The button
+fills during the initial hold but its label stays `press and hold`: it never
+shows a countdown, earned access, or remaining time. It unlocks only on release
+after the threshold. Releasing early or cancelling the hold earns nothing.
+Mouse, touch/pointer, Space, and Enter input are supported.
 
 ### 2026-07-20 — Wall-clock access shared across tabs
 
