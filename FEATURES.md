@@ -10,7 +10,10 @@ actually shipped; unbuilt ideas stay in the clearly marked future section.
 
 The settings page can add and remove whole-site rules. Pasted URLs are reduced to
 their hostname, so paths, query strings, fragments, schemes, and ports do not
-become part of the saved rule. The initial list is empty.
+become part of the saved rule. The initial list is empty. The page contains only
+its line drawing, the add-site form, and a compact editable table of blocked
+sites. Each row shows the hostname and the rule's three numeric values; ordinary
+saves happen silently.
 
 ### 2026-07-20 — Exact-domain and subdomain matching
 

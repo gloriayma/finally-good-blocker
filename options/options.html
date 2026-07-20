@@ -15,18 +15,11 @@
         <circle cx="139" cy="13" r="3" />
       </svg>
 
-      <p class="eyebrow">finally, a little friction</p>
-      <h1>finally-good-blocker</h1>
-      <p class="lede">
-        Add a site. When you visit it, hold deliberately to earn a short window
-        of access.
-      </p>
-
       <section class="add-section" aria-labelledby="add-heading">
         <h2 id="add-heading">add a site</h2>
         <form id="add-site-form" class="add-form">
           <label class="domain-field">
-            <span>domain or URL</span>
+            <span class="visually-hidden">domain or URL</span>
             <input
               id="site-input"
               name="site"
@@ -37,32 +30,17 @@
               required
             />
           </label>
-          <button class="primary-button" type="submit">block it</button>
+          <button class="primary-button" type="submit">add</button>
         </form>
-        <p class="small-note">
-          Adding <code>reddit.com</code> covers every path on that domain and its
-          subdomains, but never a lookalike such as <code>notreddit.com</code>.
-          Firefox asks for access only to the domain you add.
-        </p>
         <p id="form-status" class="status" role="status" aria-live="polite"></p>
       </section>
 
       <section class="sites-section" aria-labelledby="sites-heading">
-        <div class="section-heading">
-          <h2 id="sites-heading">blocked sites</h2>
-          <span id="save-status" class="status" aria-live="polite"></span>
-        </div>
+        <h2 id="sites-heading">blocked sites</h2>
         <div id="site-list">
           <p class="empty-state">No sites yet.</p>
         </div>
       </section>
-
-      <footer>
-        <p class="small-note">
-          All settings and timers stay in Firefox on this device. Nothing is
-          collected or sent anywhere.
-        </p>
-      </footer>
     </main>
 
     <script src="../shared/domain.js"></script>

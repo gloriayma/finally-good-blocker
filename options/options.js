@@ -8,11 +8,9 @@ const ALARM_PREFIX = "access-expired:";
 const addForm = document.querySelector("#add-site-form");
 const siteInput = document.querySelector("#site-input");
 const formStatus = document.querySelector("#form-status");
-const saveStatus = document.querySelector("#save-status");
 const siteList = document.querySelector("#site-list");
 
 let settings = { version: 1, sites: [] };
-let savedStatusTimer;
 
 function makeId() {
   if (globalThis.crypto?.randomUUID) {
@@ -24,27 +22,20 @@ function makeId() {
 
 async function saveSettings() {
   await browser.storage.local.set({ [SETTINGS_KEY]: settings });
-  saveStatus.textContent = "saved";
-  clearTimeout(savedStatusTimer);
-  savedStatusTimer = setTimeout(() => {
-    saveStatus.textContent = "";
-  }, 1400);
 }
 
-function numberField(labelText, value, onChange) {
-  const label = document.createElement("label");
-  const labelSpan = document.createElement("span");
+function numberInput(labelText, value, allowZero, onChange) {
   const input = document.createElement("input");
 
-  labelSpan.textContent = labelText;
   input.type = "number";
-  input.min = labelText === "extra access per hold second" ? "0" : "1";
+  input.className = "scheme-input";
+  input.setAttribute("aria-label", `${labelText} in seconds`);
+  input.min = allowZero ? "0" : "1";
   input.step = "1";
   input.value = String(value);
   input.addEventListener("change", () => onChange(input.value));
 
-  label.append(labelSpan, input);
-  return label;
+  return input;
 }
 
 function renderSites() {
@@ -58,17 +49,64 @@ function renderSites() {
     return;
   }
 
+  const table = document.createElement("table");
+  table.className = "sites-table";
+
+  const head = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  for (const label of ["site", "hold", "base access", "extra / hold second", ""]) {
+    const heading = document.createElement("th");
+    heading.scope = "col";
+    heading.textContent = label;
+    headRow.append(heading);
+  }
+  head.append(headRow);
+
+  const body = document.createElement("tbody");
+
   for (const site of settings.sites) {
     site.scheme = cleanScheme(site.scheme);
 
-    const card = document.createElement("article");
-    card.className = "site-card";
+    const row = document.createElement("tr");
 
-    const heading = document.createElement("div");
-    heading.className = "site-card-heading";
+    const hostnameCell = document.createElement("td");
+    hostnameCell.className = "hostname-cell";
+    hostnameCell.textContent = site.hostname;
 
-    const hostname = document.createElement("h3");
-    hostname.textContent = site.hostname;
+    const holdCell = document.createElement("td");
+    holdCell.append(
+      numberInput("hold", site.scheme.holdThresholdSeconds, false, async (value) => {
+        site.scheme.holdThresholdSeconds = Number(value);
+        site.scheme = cleanScheme(site.scheme);
+        await saveSettings();
+        renderSites();
+      }),
+    );
+
+    const baseAccessCell = document.createElement("td");
+    baseAccessCell.append(
+      numberInput("base access", site.scheme.baseAccessSeconds, false, async (value) => {
+        site.scheme.baseAccessSeconds = Number(value);
+        site.scheme = cleanScheme(site.scheme);
+        await saveSettings();
+        renderSites();
+      }),
+    );
+
+    const extraAccessCell = document.createElement("td");
+    extraAccessCell.append(
+      numberInput(
+        "extra access per hold second",
+        site.scheme.accessSecondsPerExtraHoldSecond,
+        true,
+        async (value) => {
+          site.scheme.accessSecondsPerExtraHoldSecond = Number(value);
+          site.scheme = cleanScheme(site.scheme);
+          await saveSettings();
+          renderSites();
+        },
+      ),
+    );
 
     const removeButton = document.createElement("button");
     removeButton.type = "button";
@@ -91,44 +129,16 @@ function renderSites() {
       renderSites();
     });
 
-    heading.append(hostname, removeButton);
+    const removeCell = document.createElement("td");
+    removeCell.className = "remove-cell";
+    removeCell.append(removeButton);
 
-    const fields = document.createElement("div");
-    fields.className = "scheme-fields";
-    fields.append(
-      numberField("hold before access (seconds)", site.scheme.holdThresholdSeconds, async (value) => {
-        site.scheme.holdThresholdSeconds = Number(value);
-        site.scheme = cleanScheme(site.scheme);
-        await saveSettings();
-        renderSites();
-      }),
-      numberField("base access (seconds)", site.scheme.baseAccessSeconds, async (value) => {
-        site.scheme.baseAccessSeconds = Number(value);
-        site.scheme = cleanScheme(site.scheme);
-        await saveSettings();
-        renderSites();
-      }),
-      numberField(
-        "extra access per hold second",
-        site.scheme.accessSecondsPerExtraHoldSecond,
-        async (value) => {
-          site.scheme.accessSecondsPerExtraHoldSecond = Number(value);
-          site.scheme = cleanScheme(site.scheme);
-          await saveSettings();
-          renderSites();
-        },
-      ),
-    );
-
-    const formula = document.createElement("p");
-    formula.className = "formula";
-    formula.textContent =
-      `Hold ${site.scheme.holdThresholdSeconds}s → ${site.scheme.baseAccessSeconds}s access; ` +
-      `then +${site.scheme.accessSecondsPerExtraHoldSecond}s access for every extra second held.`;
-
-    card.append(heading, fields, formula);
-    siteList.append(card);
+    row.append(hostnameCell, holdCell, baseAccessCell, extraAccessCell, removeCell);
+    body.append(row);
   }
+
+  table.append(head, body);
+  siteList.append(table);
 }
 
 addForm.addEventListener("submit", async (event) => {
@@ -176,7 +186,6 @@ addForm.addEventListener("submit", async (event) => {
   });
   await saveSettings();
   siteInput.value = "";
-  formStatus.textContent = `${hostname} is now blocked.`;
   renderSites();
 });
 

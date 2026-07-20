@@ -1,5 +1,5 @@
 .add-section {
-  margin-top: 46px;
+  margin-top: 38px;
 }
 
 .add-form {
@@ -7,75 +7,86 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 16px;
-  margin: 18px 0 12px;
+  margin: 14px 0 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .sites-section {
-  margin-top: 58px;
+  margin-top: 62px;
 }
 
-.section-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 20px;
+.sites-section > h2 {
   border-bottom: 1px solid var(--ink);
+  margin: 0;
   padding-bottom: 10px;
 }
 
-.section-heading h2 {
-  margin-bottom: 0;
+#site-list {
+  overflow-x: auto;
 }
 
 .empty-state {
+  margin: 0;
   color: var(--muted);
   padding: 28px 0;
 }
 
-.site-card {
+.sites-table {
+  width: 100%;
+  min-width: 610px;
+  border-collapse: collapse;
+}
+
+.sites-table th,
+.sites-table td {
   border-bottom: 1px solid var(--line);
-  padding: 26px 0 30px;
+  padding: 11px 8px;
+  text-align: left;
+  vertical-align: middle;
 }
 
-.site-card-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 22px;
-}
-
-.site-card-heading h3 {
-  margin: 0;
-  font-size: 1.3rem;
-}
-
-.scheme-fields {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-}
-
-.formula {
-  margin: 18px 0 0;
+.sites-table th {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.88em;
+.sites-table th:first-child,
+.sites-table td:first-child {
+  padding-left: 0;
 }
 
-footer {
-  border-top: 1px solid var(--line);
-  margin-top: 64px;
-  padding-top: 18px;
+.sites-table th:last-child,
+.sites-table td:last-child {
+  padding-right: 0;
+}
+
+.hostname-cell {
+  width: 38%;
+  font-weight: 600;
+}
+
+.scheme-input {
+  width: 72px !important;
+  min-height: 34px !important;
+  padding: 4px 2px !important;
+}
+
+.remove-cell {
+  text-align: right !important;
 }
 
 @media (max-width: 620px) {
-  .add-form,
-  .scheme-fields {
+  .add-form {
     grid-template-columns: 1fr;
   }
 
