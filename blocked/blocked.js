@@ -1,7 +1,6 @@
 const { calculateEarnedSeconds } = FinallyGoodBlockerScheme;
 
 const holdButton = document.querySelector("#hold-button");
-const holdFill = document.querySelector("#hold-fill");
 
 const query = new URLSearchParams(location.search);
 const siteId = query.get("site");
@@ -10,34 +9,10 @@ const requestedTargetUrl = query.get("target");
 let site;
 let targetUrl;
 let heldSince = null;
-let animationFrame = null;
 let unlocking = false;
 
 function resetButton() {
   heldSince = null;
-  cancelAnimationFrame(animationFrame);
-  animationFrame = null;
-  holdFill.style.transform = "scaleX(0)";
-  holdButton.classList.remove("is-ready");
-}
-
-function updateWhileHeld() {
-  if (heldSince == null || !site) {
-    return;
-  }
-
-  const heldMilliseconds = performance.now() - heldSince;
-  const heldSeconds = heldMilliseconds / 1000;
-  const threshold = site.scheme.holdThresholdSeconds;
-  const initialProgress = Math.min(heldSeconds / threshold, 1);
-
-  holdFill.style.transform = `scaleX(${initialProgress})`;
-
-  if (heldSeconds >= threshold) {
-    holdButton.classList.add("is-ready");
-  }
-
-  animationFrame = requestAnimationFrame(updateWhileHeld);
 }
 
 function beginHold(event) {
@@ -54,7 +29,6 @@ function beginHold(event) {
     holdButton.setPointerCapture(event.pointerId);
   }
   heldSince = performance.now();
-  updateWhileHeld();
 }
 
 async function finishHold(event, cancelled = false) {
@@ -141,7 +115,6 @@ async function start() {
     location.replace(targetUrl);
     return;
   }
-
 }
 
 start().catch((error) => {

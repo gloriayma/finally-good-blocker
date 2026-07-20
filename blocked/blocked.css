@@ -8,47 +8,23 @@ main {
   align-items: center;
 }
 
-.pause-drawing {
-  width: 166px;
-  margin-bottom: 44px;
-}
-
 .hold-button {
-  position: relative;
   display: block;
   width: min(100%, 430px);
   min-height: 84px;
   border: 1px solid var(--ink);
   border-radius: 3px;
   margin: 0;
-  overflow: hidden;
+  appearance: none;
   background: transparent;
   color: var(--ink);
   cursor: pointer;
-  isolation: isolate;
+  font-size: 1.1rem;
+  font-weight: 650;
   touch-action: none;
 }
 
 .hold-button:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 4px;
-}
-
-.hold-fill {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  background: var(--accent);
-  transform: scaleX(0);
-  transform-origin: left;
-}
-
-.hold-button.is-ready .hold-fill {
-  background: var(--accent-strong);
-}
-
-.hold-label {
-  position: relative;
-  font-size: 1.1rem;
-  font-weight: 650;
 }
