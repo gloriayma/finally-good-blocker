@@ -16,6 +16,10 @@ It targets Firefox 142 and newer.
 
 ![The blocking page with only its centered hold button](docs/blocking-screen.svg)
 
+The icon and settings-page line drawing depict the access function: no access
+before the hold threshold, a jump to base access, then steadily increasing access
+for additional hold time.
+
 The default rule is:
 
 - Hold for 10 seconds to earn 30 seconds of access.

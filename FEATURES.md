@@ -116,8 +116,11 @@ extension storage.
 
 The blocking and settings pages use the site's warm off-white ground, dark brown
 system type, restrained underlined actions, narrow 700px measure, generous empty
-space, and small line drawings. No assets or page content are copied from the
-site.
+space, and small line drawings. The extension icon and settings-page drawing now
+depict the configured access function itself: a dominant zero-access plateau, a
+large vertical jump for base access at the hold threshold, and a short rising
+line for access earned through continued holding. No assets or page content are
+copied from the site.
 
 ### 2026-07-20 — Dependency-free Firefox project
 
