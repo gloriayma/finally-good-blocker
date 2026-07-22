@@ -109,7 +109,10 @@
 .sites-table th:first-child,
 .sites-table td:first-child {
   width: 38%;
-  text-align: center !important;
+}
+
+.sites-table th:first-child {
+  text-align: center;
 }
 
 .sites-table th:last-child,
@@ -133,7 +136,6 @@
   font-size: 0.9rem;
   font-weight: 400 !important;
   padding-left: 32px !important;
-  text-align: left !important;
 }
 
 .scheme-input {
