@@ -12,7 +12,7 @@
 
   <g font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="#2d2926">
     <text x="250" y="226" font-size="22" font-weight="650" letter-spacing="-0.4">add a site</text>
-    <text x="383" y="274" font-size="16" fill="#aaa197" text-anchor="middle">*.com</text>
+    <text x="282" y="274" font-size="16" fill="#aaa197">*.com</text>
     <text x="894" y="274" font-size="16" text-anchor="middle">add</text>
     <line x1="250" y1="288" x2="950" y2="288" stroke="#d9d2c8" stroke-width="1" />
 
@@ -28,13 +28,13 @@
     <line x1="250" y1="446" x2="950" y2="446" stroke="#d9d2c8" stroke-width="1" />
 
     <g font-size="14.5" font-weight="400">
-      <text x="383" y="480" text-anchor="middle" fill="#746d65">mail.google.com</text>
+      <text x="282" y="480" fill="#746d65">mail.google.com</text>
       <text x="575" y="480" text-anchor="middle">10</text>
       <text x="680" y="480" text-anchor="middle">30</text>
       <text x="785" y="480" text-anchor="middle">5</text>
       <text x="894" y="480" text-anchor="middle" fill="#9c4238">remove</text>
 
-      <text x="383" y="528" text-anchor="middle" fill="#746d65">outlook.com</text>
+      <text x="282" y="528" fill="#746d65">outlook.com</text>
       <text x="575" y="528" text-anchor="middle">10</text>
       <text x="680" y="528" text-anchor="middle">30</text>
       <text x="785" y="528" text-anchor="middle">5</text>
