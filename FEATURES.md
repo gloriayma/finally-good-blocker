@@ -20,10 +20,10 @@ them remain empty. Full-width separators provide the table's only persistent
 horizontal rules. Hostnames are deliberately smaller, lighter, and normal-weight
 relative to the section heading. Numeric values use spinner-free numeric text
 fields centered within their table columns beneath the concise `hold`, `base`,
-and `extra` labels. The site names and remove actions are likewise centered in
-their columns instead of sitting against the table edges. The add and remove
-actions have no underlines. The add-site and blocked-sites headings share the
-same larger type treatment.
+and `extra` labels. The `Sites` heading stays centered, while saved hostnames are
+left-justified with an inset from the table edge. Remove actions remain centered
+in their column. The add and remove actions have no underlines. The add-site and
+blocked-sites headings share the same larger type treatment.
 
 ### 2026-07-20 — Exact-domain and subdomain matching
 
