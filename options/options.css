@@ -87,6 +87,7 @@
   width: 100%;
   min-width: 610px;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .sites-table th,
@@ -106,13 +107,14 @@
 
 .sites-table th:first-child,
 .sites-table td:first-child {
-  text-align: center;
+  width: 38%;
+  text-align: center !important;
 }
 
 .sites-table th:last-child,
 .sites-table td:last-child {
-  width: 16%;
-  text-align: center;
+  width: 17%;
+  text-align: center !important;
 }
 
 .sites-table th:nth-child(2),
@@ -121,11 +123,11 @@
 .sites-table td:nth-child(2),
 .sites-table td:nth-child(3),
 .sites-table td:nth-child(4) {
+  width: 15%;
   text-align: center;
 }
 
 .hostname-cell {
-  width: 38%;
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 400 !important;
@@ -148,4 +150,9 @@
 
 .remove-cell {
   text-align: center !important;
+}
+
+.remove-cell .danger-button {
+  display: block;
+  margin: 0 auto;
 }
