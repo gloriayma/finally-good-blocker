@@ -20,7 +20,7 @@
     <line x1="250" y1="399" x2="950" y2="399" stroke="#d9d2c8" stroke-width="1" />
 
     <g fill="#746d65" font-size="12.5" font-weight="500">
-      <text x="250" y="430">site</text>
+      <text x="383" y="430" text-anchor="middle">site</text>
       <text x="575" y="430" text-anchor="middle">hold</text>
       <text x="680" y="430" text-anchor="middle">base</text>
       <text x="785" y="430" text-anchor="middle">extra</text>
@@ -28,17 +28,17 @@
     <line x1="250" y1="446" x2="950" y2="446" stroke="#d9d2c8" stroke-width="1" />
 
     <g font-size="14.5" font-weight="400">
-      <text x="250" y="480" fill="#746d65">mail.google.com</text>
+      <text x="383" y="480" text-anchor="middle" fill="#746d65">mail.google.com</text>
       <text x="575" y="480" text-anchor="middle">10</text>
       <text x="680" y="480" text-anchor="middle">30</text>
       <text x="785" y="480" text-anchor="middle">5</text>
-      <text x="950" y="480" text-anchor="end" fill="#9c4238">remove</text>
+      <text x="894" y="480" text-anchor="middle" fill="#9c4238">remove</text>
 
-      <text x="250" y="528" fill="#746d65">outlook.com</text>
+      <text x="383" y="528" text-anchor="middle" fill="#746d65">outlook.com</text>
       <text x="575" y="528" text-anchor="middle">10</text>
       <text x="680" y="528" text-anchor="middle">30</text>
       <text x="785" y="528" text-anchor="middle">5</text>
-      <text x="950" y="528" text-anchor="end" fill="#9c4238">remove</text>
+      <text x="894" y="528" text-anchor="middle" fill="#9c4238">remove</text>
     </g>
 
     <line x1="250" y1="496" x2="950" y2="496" stroke="#d9d2c8" stroke-width="1" />

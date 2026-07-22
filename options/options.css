@@ -99,12 +99,13 @@
 
 .sites-table th:first-child,
 .sites-table td:first-child {
-  padding-left: 0;
+  text-align: center;
 }
 
 .sites-table th:last-child,
 .sites-table td:last-child {
-  padding-right: 0;
+  width: 16%;
+  text-align: center;
 }
 
 .sites-table th:nth-child(2),
@@ -139,5 +140,5 @@
 }
 
 .remove-cell {
-  text-align: right !important;
+  text-align: center !important;
 }
