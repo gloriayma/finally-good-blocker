@@ -13,11 +13,15 @@
 
 .add-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 38% repeat(3, minmax(0, 1fr)) 16%;
   align-items: end;
-  gap: 12px;
+  gap: 0;
   border-bottom: 1px solid var(--line);
   margin: 14px 0 0;
+}
+
+.domain-field {
+  grid-column: 1;
 }
 
 .add-form:focus-within {
@@ -26,6 +30,7 @@
 
 .add-form input {
   border-bottom: 0;
+  text-align: center;
 }
 
 .add-form input:focus-visible {
@@ -33,11 +38,13 @@
 }
 
 .add-button {
+  grid-column: 5;
   min-height: 42px;
   border: 0;
   background: transparent;
   padding: 8px 0;
   cursor: pointer;
+  text-align: center;
 }
 
 #form-status {

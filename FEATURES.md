@@ -13,8 +13,10 @@ their hostname, so paths, query strings, fragments, schemes, and ports do not
 become part of the saved rule. The initial list is empty. The page contains only
 its line drawing, the add-site form, and a compact editable table of blocked
 sites. Each row shows the hostname and the rule's three numeric values; ordinary
-saves happen silently. The add action is a small text control rather than
-a filled button, and full-width separators provide the table's only persistent
+saves happen silently. The add action is a small text control rather than a
+filled button. Its `*.com` placeholder is centered over the site column, and the
+add action is centered over the remove column; the three timing columns between
+them remain empty. Full-width separators provide the table's only persistent
 horizontal rules. Hostnames are deliberately smaller, lighter, and normal-weight
 relative to the section heading. Numeric values use spinner-free numeric text
 fields centered within their table columns beneath the concise `hold`, `base`,
