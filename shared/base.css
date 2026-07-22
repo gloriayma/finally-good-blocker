@@ -139,12 +139,6 @@ button {
   border-color: transparent;
   color: var(--danger);
   padding: 5px 0;
-  text-decoration: underline;
-}
-
-.danger-button:hover,
-.danger-button:focus-visible {
-  text-decoration-thickness: 2px;
 }
 
 input[type="text"],

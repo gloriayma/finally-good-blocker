@@ -38,14 +38,6 @@
   background: transparent;
   padding: 8px 0;
   cursor: pointer;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-}
-
-.add-button:hover,
-.add-button:focus-visible {
-  text-decoration-thickness: 2px;
 }
 
 #form-status {

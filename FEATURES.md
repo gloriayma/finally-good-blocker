@@ -13,13 +13,13 @@ their hostname, so paths, query strings, fragments, schemes, and ports do not
 become part of the saved rule. The initial list is empty. The page contains only
 its line drawing, the add-site form, and a compact editable table of blocked
 sites. Each row shows the hostname and the rule's three numeric values; ordinary
-saves happen silently. The add action is a small underlined control rather than
+saves happen silently. The add action is a small text control rather than
 a filled button, and full-width separators provide the table's only persistent
 horizontal rules. Hostnames are deliberately smaller, lighter, and normal-weight
 relative to the section heading. Numeric values use spinner-free numeric text
 fields centered within their table columns beneath the concise `hold`, `base`,
-and `extra` labels. The add-site and blocked-sites headings share the same larger
-type treatment.
+and `extra` labels. The add and remove actions have no underlines. The add-site
+and blocked-sites headings share the same larger type treatment.
 
 ### 2026-07-20 — Exact-domain and subdomain matching
 
@@ -115,7 +115,7 @@ extension storage.
 ### 2026-07-20 — Minimal `gloria.ma`-inspired presentation
 
 The blocking and settings pages use the site's warm off-white ground, dark brown
-system type, restrained underlined actions, narrow 700px measure, generous empty
+system type, restrained text actions, narrow 700px measure, generous empty
 space, and small line drawings. The extension icon and settings-page drawing now
 depict the configured access function itself: a dominant zero-access plateau, a
 large vertical jump for base access at the hold threshold, and a short rising
