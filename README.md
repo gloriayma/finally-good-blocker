@@ -6,6 +6,9 @@ time.
 
 It targets Firefox 142 and newer.
 
+The settings and blocking pages automatically follow Firefox's light or dark
+appearance.
+
 ## Interface
 
 ### Settings

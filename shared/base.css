@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   --paper: #fffdf8;
   --ink: #2d2926;
   --muted: #746d65;
@@ -9,8 +9,24 @@
   --accent: #c6d1bd;
   --accent-strong: #98aa8c;
   --danger: #9c4238;
+  --primary-hover: #151311;
   font-family: system-ui, sans-serif;
   font-size: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1d1a18;
+    --ink: #eee7dc;
+    --muted: #b7ada1;
+    --faint: #81786e;
+    --line: #49423b;
+    --soft: #2a2522;
+    --accent: #72806b;
+    --accent-strong: #9aaa91;
+    --danger: #e08a80;
+    --primary-hover: #fffaf0;
+  }
 }
 
 * {
@@ -131,7 +147,7 @@ button {
 
 .primary-button:hover,
 .primary-button:focus-visible {
-  background: #151311;
+  background: var(--primary-hover);
 }
 
 .danger-button {

@@ -6,6 +6,15 @@ actually shipped; unbuilt ideas stay in the clearly marked future section.
 
 ## Shipped
 
+### 2026-07-23 — Automatic dark mode
+
+The blocked page and settings page follow Firefox's active light or dark color
+scheme without adding another control. Dark mode uses a warm near-black ground,
+soft cream foreground, subdued brown separators, muted secondary text, and a
+lighter red remove action. The same semantic color variables drive both pages,
+including inputs, buttons, focus indicators, and the settings-page drawing, so
+appearance changes do not alter layout or behavior.
+
 ### 2026-07-20 — Configurable blocked-site list
 
 The settings page can add and remove whole-site rules. Pasted URLs are reduced to
