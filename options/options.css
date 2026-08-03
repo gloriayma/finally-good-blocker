@@ -1,5 +1,93 @@
-.add-section {
+.mode-section {
   margin-top: 38px;
+}
+
+.mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mode-label {
+  color: var(--muted);
+  font-size: 0.9rem;
+  transition: color 120ms ease;
+}
+
+.mode-switch[data-mode="blocklist"] .mode-label-blocklist,
+.mode-switch[data-mode="allowlist"] .mode-label-allowlist {
+  color: var(--ink);
+}
+
+.mode-toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.mode-toggle::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  right: 4px;
+  left: 4px;
+  height: 1px;
+  background: var(--line);
+}
+
+.mode-toggle::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  transition: transform 140ms ease;
+}
+
+.mode-toggle[aria-checked="true"]::after {
+  transform: translateX(24px);
+}
+
+.mode-toggle:hover::before {
+  background: var(--muted);
+}
+
+.mode-toggle:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.mode-toggle:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-label,
+  .mode-toggle::after {
+    transition: none;
+  }
+}
+
+/* Keep the mode control as quiet as the text actions elsewhere on the page. */
+.mode-toggle,
+.mode-toggle:hover,
+.mode-toggle:focus-visible {
+  border: 0;
+  background: transparent;
+}
+
+.add-section {
+  margin-top: 46px;
 }
 
 .add-section > h2,
@@ -48,11 +136,13 @@
   text-align: center;
 }
 
-#form-status {
+#mode-status,
+#form-status,
+#rule-status {
   margin: 10px 0 0;
 }
 
-#form-status:empty {
+.status:empty {
   display: none;
 }
 
@@ -74,7 +164,12 @@
   padding-bottom: 10px;
 }
 
-#site-list {
+.access-rules-section {
+  margin-top: 78px;
+}
+
+#site-list,
+#rule-list {
   overflow-x: auto;
 }
 
@@ -130,6 +225,16 @@
 .sites-table td:nth-child(4) {
   width: 15%;
   text-align: center;
+}
+
+.simple-sites-table th:first-child,
+.simple-sites-table td:first-child {
+  width: 83%;
+}
+
+.simple-sites-table th:last-child,
+.simple-sites-table td:last-child {
+  width: 17%;
 }
 
 .hostname-cell {

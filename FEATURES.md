@@ -6,6 +6,50 @@ actually shipped; unbuilt ideas stay in the clearly marked future section.
 
 ## Shipped
 
+### 2026-08-03 — Switchable whitelist-only mode
+
+The settings page has a small line-and-dot `blocklist / allowlist` mode switch
+that echoes the extension's access-curve drawing. Each mode remembers its own
+site list, upgrades preserve existing rules in blocklist mode, and an empty
+allowlist intentionally disallows the whole HTTP and HTTPS web. Allowed
+hostnames include their real subdomains. Only top-level navigation is
+restricted, so allowed pages can continue using third-party resources.
+
+Enabling allowlist mode requests Firefox's optional all-sites host permission.
+Declining leaves blocklist mode active. Disabling allowlist mode immediately
+revokes the all-sites grant and restores the individual permissions needed by
+the remembered blocklist. Firefox-internal and non-web pages remain outside the
+extension's reach.
+
+The settings page verifies that the current background version and all-sites
+permission agree with the selected mode. It gives an explicit reload warning if
+an updated options page is paired with an older still-running background page.
+A tab-update enforcement path backs up the pre-navigation web-request hook after
+optional host access is newly granted.
+
+Unlisted hostnames use the existing 10-second hold, 30-second base, and
+5-seconds-per-extra-second defaults without creating a saved rule. A separate
+custom access-rules table lets selected disallowed domains override those three
+values. Default temporary access is shared with subdomains of the hostname that
+was opened; custom rules use the same exact-domain and subdomain matching as
+blocklist rules. The custom-rule add form and empty state use the same compact
+heading, rule, and table rhythm as the rest of the settings page.
+
+Changing modes or removing an allowed hostname does not interrupt the currently
+focused page. If it is now disallowed, it is redirected when the user next
+focuses that tab, focuses its Firefox window, or returns to Firefox. New
+navigations and redirect destinations are evaluated immediately. Expiring a
+temporary access window continues to reblock matching open tabs automatically.
+
+### 2026-08-03 — Disallowed-access-only visit history
+
+Site-time history now records only a currently disallowed page opened through a
+live press-and-hold access window. Permanently allowed sites, unrelated sites in
+blocklist mode, and blocking screens are not tracked. Making a site allowed or
+removing its blocklist rule stops future tracking while retaining completed
+history. The existing focused-window definition, append-only visit records,
+30-second checkpoints, and local-only privacy boundary remain unchanged.
+
 ### 2026-07-23 — Automatic dark mode
 
 The blocked page and settings page follow Firefox's active light or dark color
@@ -72,18 +116,13 @@ while tabs or Firefox are in the background.
 
 ### 2026-07-20 — Persistent per-visit site-time history
 
-Every hostname ever added to the block list is also remembered in a separate
-tracking list. Removing its blocking rule does not remove that hostname or its
-Firefox host permission, so future visits continue to be recorded without
-continuing to block the site.
-
-A visit is time spent with a matching page as the active tab in Firefox's
+A visit is time spent with an eligible page as the active tab in Firefox's
 focused window. It starts when that page becomes active and ends when the user
 switches tabs, navigates away, closes the tab or window, or moves focus away
-from Firefox. Returning to an already-open tracked tab starts a new visit.
-Subdomains are attributed to the longest matching tracked hostname, using the
-same exact-domain/subdomain rule as blocking. Time spent on the extension's
-blocking page is not site time.
+from Firefox. Returning to an already-open eligible tab starts a new visit.
+Subdomains are attributed to the longest matching configured access rule. Time
+spent on the extension's blocking page is not site time. Eligibility was
+narrowed to live temporary access on 2026-08-03, as described above.
 
 Completed visits are append-only local-storage records named `siteVisit:<id>`.
 Each stores a version, stable visit ID, `firefox` source, `website` kind,
@@ -118,12 +157,12 @@ Firefox restarts.
 
 ### 2026-07-20 — Per-site permission requests
 
-The extension begins with no website access. Adding a site asks Firefox for
-access to that hostname and its subdomains so top-level navigation can be
-intercepted and active visits can be timed. Removing a blocking rule deliberately
-retains the matching permission because tracking continues. Page contents are
-never read or modified; configuration, timers, and visit records stay in local
-extension storage.
+The extension begins with no website access. Adding a blocklist site asks
+Firefox for access to that hostname and its subdomains so top-level navigation
+can be intercepted and temporary visits can be timed. Removing the rule now
+revokes that permission because unrestricted sites are no longer tracked. Page
+contents are never read or modified; configuration, timers, and visit records
+stay in local extension storage.
 
 ### 2026-07-20 — Minimal `gloria.ma`-inspired presentation
 

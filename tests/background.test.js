@@ -9,13 +9,13 @@ const projectRoot = path.resolve(__dirname, "..");
 function loadBackground({
   settings,
   accessUntilBySiteId = {},
-  trackedSites,
   activeTrackedVisit,
   now = 1_000_000,
   tabs = [],
   focusedWindow,
+  hasAllSitesPermission = false,
 }) {
-  const storage = { settings, accessUntilBySiteId, trackedSites, activeTrackedVisit };
+  const storage = { settings, accessUntilBySiteId, activeTrackedVisit };
   const listeners = {};
   const alarmCreations = [];
   const alarmClears = [];
@@ -41,6 +41,9 @@ function loadBackground({
       async setBadgeBackgroundColor(details) { badgeBackgrounds.push(details); },
       async setTitle(details) { actionTitles.push(details); },
       onClicked: { addListener(listener) { listeners.action = listener; } },
+    },
+    permissions: {
+      async contains() { return hasAllSitesPermission; },
     },
     alarms: {
       create(name, details) { alarmCreations.push({ name, details }); },
@@ -106,7 +109,12 @@ function loadBackground({
   });
   context.globalThis = context;
 
-  for (const relativePath of ["shared/domain.js", "shared/scheme.js", "background.js"]) {
+  for (const relativePath of [
+    "shared/domain.js",
+    "shared/scheme.js",
+    "shared/settings.js",
+    "background.js",
+  ]) {
     const source = fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
     vm.runInContext(source, context, { filename: relativePath });
   }
@@ -129,6 +137,13 @@ function loadBackground({
       context.__trackingOptions = options;
       return vm.runInContext("reconcileTrackedVisit(__trackingOptions)", context);
     },
+    enforceFocus() {
+      return vm.runInContext("enforceFocusedTab()", context);
+    },
+    enforceTab(tab) {
+      context.__tabToEnforce = tab;
+      return vm.runInContext("enforceTab(__tabToEnforce)", context);
+    },
     redirectExpired(siteId) {
       return vm.runInContext(`redirectTabsWhenAccessExpires(${JSON.stringify(siteId)})`, context);
     },
@@ -144,6 +159,16 @@ const redditSite = {
     accessSecondsPerExtraHoldSecond: 5,
   },
 };
+
+function allowlistSettings({ allowed = [], rules = [] } = {}) {
+  return {
+    version: 2,
+    mode: "allowlist",
+    blocklistSites: [redditSite],
+    allowlistSites: allowed,
+    allowlistAccessRules: rules,
+  };
+}
 
 test("redirects exact domains and subdomains, but not suffix lookalikes", async () => {
   const app = loadBackground({ settings: { version: 1, sites: [redditSite] } });
@@ -248,7 +273,154 @@ test("expiry re-blocks matching open tabs and leaves lookalikes alone", async ()
   assert.match(app.tabUpdates[0].change.url, /blocked\/blocked\.html/);
 });
 
-test("starts a durable visit for the focused tracked site", async () => {
+test("migrates version 1 settings into blocklist mode", async () => {
+  const app = loadBackground({
+    settings: { version: 1, sites: [redditSite] },
+  });
+
+  await app.listeners.beforeRequest({ url: "https://reddit.com/" });
+
+  assert.equal(app.storage.settings.version, 2);
+  assert.equal(app.storage.settings.mode, "blocklist");
+  assert.equal(app.storage.settings.blocklistSites[0].hostname, "reddit.com");
+  assert.equal(app.storage.settings.allowlistSites.length, 0);
+});
+
+test("allowlist mode permits saved domains and blocks every other web hostname", async () => {
+  const app = loadBackground({
+    settings: allowlistSettings({
+      allowed: [{ id: "mozilla", hostname: "mozilla.org" }],
+    }),
+  });
+
+  const exact = await app.listeners.beforeRequest({ url: "https://mozilla.org/" });
+  const subdomain = await app.listeners.beforeRequest({ url: "https://developer.mozilla.org/" });
+  const disallowed = await app.listeners.beforeRequest({ url: "https://example.com/" });
+
+  assert.equal(Object.keys(exact).length, 0);
+  assert.equal(Object.keys(subdomain).length, 0);
+  assert.match(disallowed.redirectUrl, /blocked\/blocked\.html/);
+  assert.equal(
+    new URL(disallowed.redirectUrl).searchParams.get("site"),
+    "allowlist-default:example.com",
+  );
+});
+
+test("an unseen allowlist hostname uses defaults without creating a saved rule", async () => {
+  const app = loadBackground({ settings: allowlistSettings() });
+
+  const blocked = await app.listeners.beforeRequest({ url: "https://news.example.com/story" });
+  const blockedUrl = new URL(blocked.redirectUrl);
+  const state = await app.listeners.message({
+    type: "get-blocked-page-state",
+    siteId: blockedUrl.searchParams.get("site"),
+    targetUrl: blockedUrl.searchParams.get("target"),
+  });
+
+  assert.equal(state.site.id, "allowlist-default:news.example.com");
+  assert.equal(state.site.scheme.holdThresholdSeconds, 10);
+  assert.equal(state.site.scheme.baseAccessSeconds, 30);
+  assert.equal(state.site.scheme.accessSecondsPerExtraHoldSecond, 5);
+  assert.deepEqual(app.storage.settings.allowlistAccessRules, []);
+});
+
+test("default allowlist access is shared with subdomains of the encountered hostname", async () => {
+  const app = loadBackground({ settings: allowlistSettings() });
+
+  const unlock = await app.listeners.message({
+    type: "unlock-site",
+    siteId: "allowlist-default:news.example.com",
+    targetUrl: "https://news.example.com/",
+    heldMilliseconds: 10_000,
+  });
+
+  assert.equal(unlock.ok, true);
+  assert.equal(
+    app.storage.accessUntilBySiteId["allowlist-default:news.example.com"],
+    1_030_000,
+  );
+  assert.equal(
+    Object.keys(
+      await app.listeners.beforeRequest({ url: "https://images.news.example.com/a" }),
+    ).length,
+    0,
+  );
+  assert.match(
+    (await app.listeners.beforeRequest({ url: "https://shop.example.com/" })).redirectUrl,
+    /blocked\/blocked\.html/,
+  );
+});
+
+test("a custom allowlist access rule overrides defaults for its hostname tree", async () => {
+  const app = loadBackground({
+    settings: allowlistSettings({
+      rules: [{
+        id: "example-rule",
+        hostname: "example.com",
+        scheme: {
+          holdThresholdSeconds: 2,
+          baseAccessSeconds: 9,
+          accessSecondsPerExtraHoldSecond: 1,
+        },
+      }],
+    }),
+  });
+
+  const blocked = await app.listeners.beforeRequest({ url: "https://news.example.com/" });
+  const blockedUrl = new URL(blocked.redirectUrl);
+  assert.equal(blockedUrl.searchParams.get("site"), "example-rule");
+
+  const unlock = await app.listeners.message({
+    type: "unlock-site",
+    siteId: "example-rule",
+    targetUrl: "https://news.example.com/",
+    heldMilliseconds: 2_000,
+  });
+  assert.equal(unlock.earnedSeconds, 9);
+});
+
+test("a newly disallowed open tab is redirected only when it is focused again", async () => {
+  const allowedReddit = { id: "allowed-reddit", hostname: "reddit.com" };
+  const app = loadBackground({
+    settings: allowlistSettings({ allowed: [allowedReddit] }),
+    tabs: [{ id: 7, active: true, url: "https://reddit.com/" }],
+  });
+
+  app.storage.settings = allowlistSettings();
+  assert.equal(app.tabUpdates.length, 0);
+
+  await app.enforceFocus();
+
+  assert.equal(app.tabUpdates.length, 1);
+  assert.equal(app.tabUpdates[0].tabId, 7);
+  assert.match(app.tabUpdates[0].change.url, /blocked\/blocked\.html/);
+});
+
+test("reports allowlist background and permission health to the settings page", async () => {
+  const app = loadBackground({
+    settings: allowlistSettings(),
+    hasAllSitesPermission: true,
+  });
+
+  const status = await app.listeners.message({ type: "get-extension-status" });
+
+  assert.equal(status.ok, true);
+  assert.equal(status.apiVersion, 2);
+  assert.equal(status.mode, "allowlist");
+  assert.equal(status.hasAllSitesPermission, true);
+});
+
+test("tab-level enforcement provides a fallback for newly granted host access", async () => {
+  const app = loadBackground({ settings: allowlistSettings() });
+
+  await app.enforceTab({ id: 12, url: "https://example.com/" });
+
+  assert.equal(app.tabUpdates.length, 1);
+  assert.equal(app.tabUpdates[0].tabId, 12);
+  assert.match(app.tabUpdates[0].change.url, /blocked\/blocked\.html/);
+});
+
+test("does not track a disallowed site before temporary access is earned", async () => {
   const app = loadBackground({
     settings: { version: 1, sites: [redditSite] },
     tabs: [{ id: 7, active: true, url: "https://old.reddit.com/r/firefox" }],
@@ -256,10 +428,18 @@ test("starts a durable visit for the focused tracked site", async () => {
 
   await app.reconcileTracking();
 
-  assert.deepEqual(JSON.parse(JSON.stringify(app.storage.trackedSites)), {
-    version: 1,
-    hostnames: ["reddit.com"],
+  assert.equal(app.storage.activeTrackedVisit, undefined);
+});
+
+test("starts a durable visit for a temporarily accessed disallowed site", async () => {
+  const app = loadBackground({
+    settings: { version: 1, sites: [redditSite] },
+    accessUntilBySiteId: { reddit: 1_030_000 },
+    tabs: [{ id: 7, active: true, url: "https://old.reddit.com/r/firefox" }],
   });
+
+  await app.reconcileTracking();
+
   assert.equal(app.storage.activeTrackedVisit.source, "firefox");
   assert.equal(app.storage.activeTrackedVisit.kind, "website");
   assert.equal(app.storage.activeTrackedVisit.hostname, "reddit.com");
@@ -271,8 +451,8 @@ test("starts a durable visit for the focused tracked site", async () => {
 
 test("finishes a visit when the user leaves the tracked site", async () => {
   const app = loadBackground({
-    settings: { version: 1, sites: [] },
-    trackedSites: { version: 1, hostnames: ["reddit.com"] },
+    settings: { version: 1, sites: [redditSite] },
+    accessUntilBySiteId: { reddit: 1_030_000 },
     tabs: [{ id: 7, active: true, url: "https://reddit.com/" }],
   });
 
@@ -302,23 +482,23 @@ test("finishes a visit when the user leaves the tracked site", async () => {
   });
 });
 
-test("keeps tracking after the site has been removed from blocking", async () => {
+test("does not track a permanently allowed site in allowlist mode", async () => {
   const app = loadBackground({
-    settings: { version: 1, sites: [] },
-    trackedSites: { version: 1, hostnames: ["reddit.com"] },
+    settings: allowlistSettings({
+      allowed: [{ id: "allowed-reddit", hostname: "reddit.com" }],
+    }),
     tabs: [{ id: 4, active: true, url: "https://reddit.com/" }],
   });
 
   await app.reconcileTracking();
 
-  assert.equal(app.storage.activeTrackedVisit.hostname, "reddit.com");
-  assert.equal(app.storage.activeTrackedVisit.tabId, 4);
+  assert.equal(app.storage.activeTrackedVisit, undefined);
 });
 
 test("switching between two tabs on one site creates two visits", async () => {
   const app = loadBackground({
-    settings: { version: 1, sites: [] },
-    trackedSites: { version: 1, hostnames: ["reddit.com"] },
+    settings: { version: 1, sites: [redditSite] },
+    accessUntilBySiteId: { reddit: 1_030_000 },
     tabs: [{ id: 1, active: true, url: "https://reddit.com/" }],
   });
 
@@ -341,8 +521,8 @@ test("switching between two tabs on one site creates two visits", async () => {
 
 test("moving focus away from Firefox ends the visit", async () => {
   const app = loadBackground({
-    settings: { version: 1, sites: [] },
-    trackedSites: { version: 1, hostnames: ["reddit.com"] },
+    settings: { version: 1, sites: [redditSite] },
+    accessUntilBySiteId: { reddit: 1_030_000 },
     tabs: [{ id: 3, active: true, url: "https://reddit.com/" }],
   });
 
@@ -363,8 +543,8 @@ test("moving focus away from Firefox ends the visit", async () => {
 
 test("browser startup does not count time Firefox was closed", async () => {
   const app = loadBackground({
-    settings: { version: 1, sites: [] },
-    trackedSites: { version: 1, hostnames: ["reddit.com"] },
+    settings: { version: 1, sites: [redditSite] },
+    accessUntilBySiteId: { reddit: 1_030_000 },
     activeTrackedVisit: {
       version: 1,
       id: "old-browser-session",

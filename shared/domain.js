@@ -41,7 +41,15 @@
     return current === rule || current.endsWith(`.${rule}`);
   }
 
-  const tools = { normalizeHostnameInput, hostnameMatchesSite };
+  function findMostSpecificSite(hostname, sites) {
+    const matches = (Array.isArray(sites) ? sites : []).filter((site) =>
+      hostnameMatchesSite(hostname, site?.hostname),
+    );
+    matches.sort((a, b) => b.hostname.length - a.hostname.length);
+    return matches[0] || null;
+  }
+
+  const tools = { normalizeHostnameInput, hostnameMatchesSite, findMostSpecificSite };
   scope.FinallyGoodBlockerDomain = tools;
 
   if (typeof module !== "undefined" && module.exports) {

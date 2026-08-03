@@ -1,28 +1,150 @@
-const { hostnameMatchesSite } = FinallyGoodBlockerDomain;
-const { cleanScheme, calculateEarnedSeconds } = FinallyGoodBlockerScheme;
+const { findMostSpecificSite } = FinallyGoodBlockerDomain;
+const { DEFAULT_SCHEME, cleanScheme, calculateEarnedSeconds } = FinallyGoodBlockerScheme;
+const {
+  BLOCKLIST_MODE,
+  ALLOWLIST_MODE,
+  normalizeSettings,
+} = FinallyGoodBlockerSettings;
 
 const SETTINGS_KEY = "settings";
 const ACCESS_KEY = "accessUntilBySiteId";
 const ALARM_PREFIX = "access-expired:";
 const BADGE_ALARM = "active-tab-badge-tick";
-const TRACKED_SITES_KEY = "trackedSites";
 const ACTIVE_VISIT_KEY = "activeTrackedVisit";
 const VISIT_KEY_PREFIX = "siteVisit:";
 const TRACKING_HEARTBEAT_ALARM = "tracking-heartbeat";
 const TRACKING_HEARTBEAT_MINUTES = 0.5;
+const ALLOWLIST_DEFAULT_ACCESS_PREFIX = "allowlist-default:";
+const BACKGROUND_API_VERSION = 2;
 
 async function readState() {
   const stored = await browser.storage.local.get([SETTINGS_KEY, ACCESS_KEY]);
-  const settings = stored[SETTINGS_KEY] || { version: 1, sites: [] };
+  const settings = normalizeSettings(stored[SETTINGS_KEY]);
 
-  if (!Array.isArray(settings.sites)) {
-    settings.sites = [];
+  if (stored[SETTINGS_KEY]?.version !== settings.version) {
+    await browser.storage.local.set({ [SETTINGS_KEY]: settings });
   }
 
   return {
     settings,
-    accessUntilBySiteId: stored[ACCESS_KEY] || {},
+    accessUntilBySiteId:
+      stored[ACCESS_KEY] && typeof stored[ACCESS_KEY] === "object"
+        ? stored[ACCESS_KEY]
+        : {},
   };
+}
+
+function makeAllowlistDefaultAccessKey(hostname) {
+  return `${ALLOWLIST_DEFAULT_ACCESS_PREFIX}${hostname}`;
+}
+
+function resolveRestriction(hostname, settings, accessUntilBySiteId = {}) {
+  if (settings.mode === BLOCKLIST_MODE) {
+    const site = findMostSpecificSite(hostname, settings.blocklistSites);
+    return site
+      ? {
+          kind: BLOCKLIST_MODE,
+          accessKey: site.id,
+          hostname: site.hostname,
+          scheme: cleanScheme(site.scheme),
+        }
+      : null;
+  }
+
+  if (findMostSpecificSite(hostname, settings.allowlistSites)) {
+    return null;
+  }
+
+  const customRule = findMostSpecificSite(hostname, settings.allowlistAccessRules);
+  if (customRule) {
+    return {
+      kind: "allowlist-custom",
+      accessKey: customRule.id,
+      hostname: customRule.hostname,
+      scheme: cleanScheme(customRule.scheme),
+    };
+  }
+
+  const temporaryDefaultSites = Object.keys(accessUntilBySiteId)
+    .filter((accessKey) => accessKey.startsWith(ALLOWLIST_DEFAULT_ACCESS_PREFIX))
+    .map((accessKey) => ({
+      accessKey,
+      hostname: accessKey.slice(ALLOWLIST_DEFAULT_ACCESS_PREFIX.length),
+    }));
+  const matchingTemporaryDefault = findMostSpecificSite(
+    hostname,
+    temporaryDefaultSites,
+  );
+  if (matchingTemporaryDefault) {
+    return {
+      kind: "allowlist-default",
+      accessKey: matchingTemporaryDefault.accessKey,
+      hostname: matchingTemporaryDefault.hostname,
+      scheme: { ...DEFAULT_SCHEME },
+    };
+  }
+
+  // An unseen hostname is deliberately not persisted. It uses the default
+  // access curve and receives a temporary key scoped to that hostname tree.
+  return {
+    kind: "allowlist-default",
+    accessKey: makeAllowlistDefaultAccessKey(hostname),
+    hostname,
+    scheme: { ...DEFAULT_SCHEME },
+  };
+}
+
+function parseWebUrl(value) {
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return null;
+  }
+
+  return parsed;
+}
+
+function restrictionForUrl(value, settings, accessUntilBySiteId = {}) {
+  const parsed = parseWebUrl(value);
+  if (!parsed) {
+    return { parsed: null, restriction: null };
+  }
+
+  const hostname = parsed.hostname.toLowerCase().replace(/\.$/, "");
+  return {
+    parsed,
+    restriction: resolveRestriction(hostname, settings, accessUntilBySiteId),
+  };
+}
+
+function hasTemporaryAccess(restriction, accessUntilBySiteId, now = Date.now()) {
+  if (!restriction) {
+    return false;
+  }
+
+  return now < (Number(accessUntilBySiteId[restriction.accessKey]) || 0);
+}
+
+function isKnownAccessKey(accessKey, settings) {
+  if (settings.mode === BLOCKLIST_MODE) {
+    return settings.blocklistSites.some((site) => site.id === accessKey);
+  }
+
+  if (settings.allowlistAccessRules.some((site) => site.id === accessKey)) {
+    return true;
+  }
+
+  if (!accessKey.startsWith(ALLOWLIST_DEFAULT_ACCESS_PREFIX)) {
+    return false;
+  }
+
+  const hostname = accessKey.slice(ALLOWLIST_DEFAULT_ACCESS_PREFIX.length);
+  return resolveRestriction(hostname, settings)?.accessKey === accessKey;
 }
 
 function makeVisitId(now, tabId) {
@@ -36,36 +158,14 @@ function makeVisitId(now, tabId) {
 async function readTrackingState() {
   const stored = await browser.storage.local.get([
     SETTINGS_KEY,
-    TRACKED_SITES_KEY,
+    ACCESS_KEY,
     ACTIVE_VISIT_KEY,
   ]);
-
-  const savedHostnames = Array.isArray(stored[TRACKED_SITES_KEY]?.hostnames)
-    ? stored[TRACKED_SITES_KEY].hostnames
-    : [];
-  const configuredSites = Array.isArray(stored[SETTINGS_KEY]?.sites)
-    ? stored[SETTINGS_KEY].sites
-    : [];
-
-  // The tracking list is intentionally separate from the current block list.
-  // Current rules are copied into it, but deleting a rule never removes its
-  // hostname. That site therefore keeps accumulating visits after unblocking.
-  const trackedHostnames = [...new Set([
-    ...savedHostnames.filter((hostname) => typeof hostname === "string"),
-    ...configuredSites
-      .map((site) => site.hostname)
-      .filter((hostname) => typeof hostname === "string"),
-  ])];
-
-  if (
-    trackedHostnames.length !== savedHostnames.length ||
-    trackedHostnames.some((hostname, index) => hostname !== savedHostnames[index])
-  ) {
-    await browser.storage.local.set({
-      [TRACKED_SITES_KEY]: { version: 1, hostnames: trackedHostnames },
-    });
-  }
-
+  const settings = normalizeSettings(stored[SETTINGS_KEY]);
+  const accessUntilBySiteId =
+    stored[ACCESS_KEY] && typeof stored[ACCESS_KEY] === "object"
+      ? stored[ACCESS_KEY]
+      : {};
   const activeVisit = stored[ACTIVE_VISIT_KEY];
   const hasValidActiveVisit =
     activeVisit &&
@@ -78,12 +178,13 @@ async function readTrackingState() {
     Number.isInteger(activeVisit.windowId);
 
   return {
-    trackedHostnames,
+    settings,
+    accessUntilBySiteId,
     activeVisit: hasValidActiveVisit ? activeVisit : null,
   };
 }
 
-async function getFocusedTrackedPage(trackedHostnames) {
+async function getFocusedTrackedPage(settings, accessUntilBySiteId) {
   let focusedWindow;
   try {
     focusedWindow = await browser.windows.getLastFocused({ populate: true });
@@ -100,32 +201,21 @@ async function getFocusedTrackedPage(trackedHostnames) {
     return null;
   }
 
-  let page;
-  try {
-    page = new URL(activeTab.url);
-  } catch {
-    return null;
-  }
-
-  if (page.protocol !== "http:" && page.protocol !== "https:") {
-    return null;
-  }
-
-  const hostname = page.hostname.toLowerCase().replace(/\.$/, "");
-
-  // Use the same literal matching rule as blocking. The longest saved hostname
-  // wins when both a parent domain and a subdomain have ever been configured.
-  const matchingHostnames = trackedHostnames.filter((trackedHostname) =>
-    hostnameMatchesSite(hostname, trackedHostname),
+  const { restriction } = restrictionForUrl(
+    activeTab.url,
+    settings,
+    accessUntilBySiteId,
   );
-  matchingHostnames.sort((a, b) => b.length - a.length);
 
-  if (!matchingHostnames[0]) {
+  // Only time a page that is currently disallowed and was deliberately opened
+  // through a live press-and-hold access window. Allowed pages and blocking
+  // screens never become history records.
+  if (!hasTemporaryAccess(restriction, accessUntilBySiteId)) {
     return null;
   }
 
   return {
-    hostname: matchingHostnames[0],
+    hostname: restriction.hostname,
     tabId: activeTab.id,
     windowId: focusedWindow.id,
   };
@@ -133,8 +223,8 @@ async function getFocusedTrackedPage(trackedHostnames) {
 
 async function reconcileTrackedVisit({ startNewBrowserSession = false } = {}) {
   const now = Date.now();
-  const { trackedHostnames, activeVisit } = await readTrackingState();
-  const currentPage = await getFocusedTrackedPage(trackedHostnames);
+  const { settings, accessUntilBySiteId, activeVisit } = await readTrackingState();
+  const currentPage = await getFocusedTrackedPage(settings, accessUntilBySiteId);
 
   const continuingSameVisit =
     !startNewBrowserSession &&
@@ -209,9 +299,9 @@ function ensureTrackingHeartbeat() {
   });
 }
 
-function makeBlockedPageUrl(siteId, targetUrl) {
+function makeBlockedPageUrl(accessKey, targetUrl) {
   const blockedPage = new URL(browser.runtime.getURL("blocked/blocked.html"));
-  blockedPage.searchParams.set("site", siteId);
+  blockedPage.searchParams.set("site", accessKey);
   blockedPage.searchParams.set("target", targetUrl);
   return blockedPage.href;
 }
@@ -266,35 +356,18 @@ async function updateActiveTabBadge() {
     return;
   }
 
-  let target;
-  try {
-    target = new URL(activeTab.url);
-  } catch {
-    target = null;
-  }
-
-  let site;
-  let accessUntil = 0;
-
-  if (target && (target.protocol === "http:" || target.protocol === "https:")) {
-    const { settings, accessUntilBySiteId } = await readState();
-    const hostname = target.hostname.toLowerCase().replace(/\.$/, "");
-
-    // Use the same visible matching flow as navigation blocking: exact domain
-    // or real subdomain, with the longest saved hostname winning.
-    const matchingSites = settings.sites.filter((candidate) =>
-      hostnameMatchesSite(hostname, candidate.hostname),
-    );
-    matchingSites.sort((a, b) => b.hostname.length - a.hostname.length);
-    site = matchingSites[0];
-
-    if (site) {
-      accessUntil = Number(accessUntilBySiteId[site.id]) || 0;
-    }
-  }
-
+  const { settings, accessUntilBySiteId } = await readState();
+  const { restriction } = restrictionForUrl(
+    activeTab.url,
+    settings,
+    accessUntilBySiteId,
+  );
+  const accessUntil = restriction
+    ? Number(accessUntilBySiteId[restriction.accessKey]) || 0
+    : 0;
   const remainingMilliseconds = accessUntil - Date.now();
-  if (!site || remainingMilliseconds <= 0) {
+
+  if (!restriction || remainingMilliseconds <= 0) {
     await Promise.all([
       browser.action.setBadgeText({ text: "", tabId: activeTab.id }),
       browser.action.setTitle({ title: null, tabId: activeTab.id }),
@@ -314,13 +387,11 @@ async function updateActiveTabBadge() {
       tabId: activeTab.id,
     }),
     browser.action.setTitle({
-      title: makeBadgeTitle(site.hostname, remainingSeconds),
+      title: makeBadgeTitle(restriction.hostname, remainingSeconds),
       tabId: activeTab.id,
     }),
   ]);
 
-  // Firefox Manifest V3 background pages may unload while idle, so an alarm
-  // provides the next tick instead of relying on setTimeout or setInterval.
   browser.alarms.create(BADGE_ALARM, {
     when: Math.min(accessUntil, Date.now() + 1000),
   });
@@ -328,34 +399,18 @@ async function updateActiveTabBadge() {
 
 browser.webRequest.onBeforeRequest.addListener(
   async (details) => {
-    // Only normal web pages are in this listener's URL filter, but the explicit
-    // check keeps the accepted schemes obvious and protects future changes.
-    const target = new URL(details.url);
-    if (target.protocol !== "http:" && target.protocol !== "https:") {
-      return {};
-    }
-
     const { settings, accessUntilBySiteId } = await readState();
-    const hostname = target.hostname.toLowerCase().replace(/\.$/, "");
-
-    // A rule matches the exact hostname or a real subdomain. If overlapping
-    // rules exist, the longest hostname is the most specific and wins.
-    const matchingSites = settings.sites.filter((site) =>
-      hostnameMatchesSite(hostname, site.hostname),
+    const { restriction } = restrictionForUrl(
+      details.url,
+      settings,
+      accessUntilBySiteId,
     );
-    matchingSites.sort((a, b) => b.hostname.length - a.hostname.length);
-    const site = matchingSites[0];
 
-    if (!site) {
+    if (!restriction || hasTemporaryAccess(restriction, accessUntilBySiteId)) {
       return {};
     }
 
-    const accessUntil = Number(accessUntilBySiteId[site.id]) || 0;
-    if (Date.now() < accessUntil) {
-      return {};
-    }
-
-    return { redirectUrl: makeBlockedPageUrl(site.id, details.url) };
+    return { redirectUrl: makeBlockedPageUrl(restriction.accessKey, details.url) };
   },
   { urls: ["*://*/*"], types: ["main_frame"] },
   ["blocking"],
@@ -368,64 +423,74 @@ browser.runtime.onMessage.addListener(async (message) => {
 
   if (message.type === "get-blocked-page-state") {
     const { settings, accessUntilBySiteId } = await readState();
-    const site = settings.sites.find((candidate) => candidate.id === message.siteId);
+    const { parsed: target, restriction } = restrictionForUrl(
+      message.targetUrl,
+      settings,
+      accessUntilBySiteId,
+    );
 
-    let target;
-    try {
-      target = new URL(message.targetUrl);
-    } catch {
+    if (!target) {
       return { ok: false, error: "The original page URL is invalid." };
     }
 
-    const isNormalWebPage = target.protocol === "http:" || target.protocol === "https:";
-    const hostname = target.hostname.toLowerCase().replace(/\.$/, "");
-    if (!site || !isNormalWebPage || !hostnameMatchesSite(hostname, site.hostname)) {
-      return { ok: false, error: "This blocking page no longer matches a saved site." };
+    if (!restriction) {
+      return { ok: true, restricted: false, targetUrl: target.href };
     }
 
     return {
       ok: true,
+      restricted: true,
       site: {
-        id: site.id,
-        hostname: site.hostname,
-        scheme: cleanScheme(site.scheme),
+        id: restriction.accessKey,
+        hostname: restriction.hostname,
+        scheme: restriction.scheme,
       },
       targetUrl: target.href,
-      accessUntil: Number(accessUntilBySiteId[site.id]) || 0,
+      accessUntil: Number(accessUntilBySiteId[restriction.accessKey]) || 0,
+    };
+  }
+
+  if (message.type === "get-extension-status") {
+    const { settings } = await readState();
+    const hasAllSitesPermission = await browser.permissions.contains({
+      origins: ["*://*/*"],
+    });
+    return {
+      ok: true,
+      apiVersion: BACKGROUND_API_VERSION,
+      mode: settings.mode,
+      hasAllSitesPermission,
     };
   }
 
   if (message.type === "unlock-site") {
     const { settings, accessUntilBySiteId } = await readState();
-    const site = settings.sites.find((candidate) => candidate.id === message.siteId);
+    const { parsed: target, restriction } = restrictionForUrl(
+      message.targetUrl,
+      settings,
+      accessUntilBySiteId,
+    );
 
-    let target;
-    try {
-      target = new URL(message.targetUrl);
-    } catch {
-      return { ok: false, error: "The original page URL is invalid." };
-    }
-
-    const hostname = target.hostname.toLowerCase().replace(/\.$/, "");
-    if (
-      !site ||
-      (target.protocol !== "http:" && target.protocol !== "https:") ||
-      !hostnameMatchesSite(hostname, site.hostname)
-    ) {
+    if (!target || !restriction || restriction.accessKey !== message.siteId) {
       return { ok: false, error: "The requested site does not match this rule." };
     }
 
-    // The background page calculates the earned time from the saved scheme. The
-    // blocked page reports only how long the button was held.
-    const earnedSeconds = calculateEarnedSeconds(message.heldMilliseconds, site.scheme);
+    // The background page calculates the earned time from the current rule. The
+    // blocking page reports only how long the button was held.
+    const earnedSeconds = calculateEarnedSeconds(
+      message.heldMilliseconds,
+      restriction.scheme,
+    );
     if (earnedSeconds <= 0) {
       return { ok: false, error: "The button was not held long enough." };
     }
 
     const accessUntil = Date.now() + earnedSeconds * 1000;
-    accessUntilBySiteId[site.id] = accessUntil;
+    accessUntilBySiteId[restriction.accessKey] = accessUntil;
     await browser.storage.local.set({ [ACCESS_KEY]: accessUntilBySiteId });
-    browser.alarms.create(`${ALARM_PREFIX}${site.id}`, { when: accessUntil });
+    browser.alarms.create(`${ALARM_PREFIX}${restriction.accessKey}`, {
+      when: accessUntil,
+    });
 
     return { ok: true, earnedSeconds, accessUntil, targetUrl: target.href };
   }
@@ -433,20 +498,47 @@ browser.runtime.onMessage.addListener(async (message) => {
   return undefined;
 });
 
-async function redirectTabsWhenAccessExpires(siteId) {
-  const { settings, accessUntilBySiteId } = await readState();
-  const site = settings.sites.find((candidate) => candidate.id === siteId);
-
-  const accessUntil = Number(accessUntilBySiteId[siteId]) || 0;
-  if (Date.now() < accessUntil) {
-    browser.alarms.create(`${ALARM_PREFIX}${siteId}`, { when: accessUntil });
+async function enforceTab(tab) {
+  if (!tab || tab.id == null || !tab.url) {
     return;
   }
 
-  delete accessUntilBySiteId[siteId];
-  await browser.storage.local.set({ [ACCESS_KEY]: accessUntilBySiteId });
+  const { settings, accessUntilBySiteId } = await readState();
+  const { parsed: target, restriction } = restrictionForUrl(
+    tab.url,
+    settings,
+    accessUntilBySiteId,
+  );
 
-  if (!site) {
+  if (!target || !restriction || hasTemporaryAccess(restriction, accessUntilBySiteId)) {
+    return;
+  }
+
+  await browser.tabs.update(tab.id, {
+    url: makeBlockedPageUrl(restriction.accessKey, target.href),
+  });
+}
+
+async function enforceFocusedTab() {
+  let focusedWindow;
+  try {
+    focusedWindow = await browser.windows.getLastFocused({ populate: true });
+  } catch {
+    return;
+  }
+
+  if (!focusedWindow?.focused || !Array.isArray(focusedWindow.tabs)) {
+    return;
+  }
+
+  await enforceTab(focusedWindow.tabs.find((tab) => tab.active));
+}
+
+async function redirectTabsWhenAccessExpires(accessKey) {
+  const { settings, accessUntilBySiteId } = await readState();
+  const accessUntil = Number(accessUntilBySiteId[accessKey]) || 0;
+  if (Date.now() < accessUntil) {
+    browser.alarms.create(`${ALARM_PREFIX}${accessKey}`, { when: accessUntil });
     return;
   }
 
@@ -458,35 +550,25 @@ async function redirectTabsWhenAccessExpires(siteId) {
       continue;
     }
 
-    let target;
-    try {
-      target = new URL(tab.url);
-    } catch {
-      continue;
-    }
-
-    if (target.protocol !== "http:" && target.protocol !== "https:") {
-      continue;
-    }
-
-    const hostname = target.hostname.toLowerCase().replace(/\.$/, "");
-    const matchingSites = settings.sites.filter((candidate) =>
-      hostnameMatchesSite(hostname, candidate.hostname),
+    const { parsed: target, restriction } = restrictionForUrl(
+      tab.url,
+      settings,
+      accessUntilBySiteId,
     );
-    matchingSites.sort((a, b) => b.hostname.length - a.hostname.length);
-
-    // A more-specific rule may cover this tab, so only redirect when the rule
-    // whose timer expired is the rule that currently wins.
-    if (matchingSites[0]?.id === siteId) {
-      redirects.push(
-        browser.tabs.update(tab.id, {
-          url: makeBlockedPageUrl(siteId, target.href),
-        }),
-      );
+    if (!target || restriction?.accessKey !== accessKey) {
+      continue;
     }
+
+    redirects.push(
+      browser.tabs.update(tab.id, {
+        url: makeBlockedPageUrl(accessKey, target.href),
+      }),
+    );
   }
 
   await Promise.all(redirects);
+  delete accessUntilBySiteId[accessKey];
+  await browser.storage.local.set({ [ACCESS_KEY]: accessUntilBySiteId });
 }
 
 browser.alarms.onAlarm.addListener((alarm) => {
@@ -504,11 +586,12 @@ browser.alarms.onAlarm.addListener((alarm) => {
     return;
   }
 
-  const siteId = alarm.name.slice(ALARM_PREFIX.length);
-  redirectTabsWhenAccessExpires(siteId).catch(console.error);
+  const accessKey = alarm.name.slice(ALARM_PREFIX.length);
+  redirectTabsWhenAccessExpires(accessKey).catch(console.error);
 });
 
 browser.tabs.onActivated.addListener(() => {
+  enforceFocusedTab().catch(console.error);
   updateActiveTabBadge().catch(console.error);
   scheduleTrackingReconcile();
 });
@@ -518,6 +601,13 @@ browser.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
     updateActiveTabBadge().catch(console.error);
     scheduleTrackingReconcile();
   }
+
+  // webRequest is the pre-navigation enforcement path. This tab-level check is
+  // a defensive fallback for a newly granted optional host permission and also
+  // covers navigation that completes while the tab is in the background.
+  if (changeInfo.url || changeInfo.status === "complete") {
+    enforceTab(tab).catch(console.error);
+  }
 });
 
 browser.tabs.onRemoved.addListener(() => {
@@ -525,6 +615,7 @@ browser.tabs.onRemoved.addListener(() => {
 });
 
 browser.windows.onFocusChanged.addListener(() => {
+  enforceFocusedTab().catch(console.error);
   updateActiveTabBadge().catch(console.error);
   scheduleTrackingReconcile();
 });
@@ -536,23 +627,19 @@ browser.windows.onRemoved.addListener(() => {
 browser.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === "local" && (changes[SETTINGS_KEY] || changes[ACCESS_KEY])) {
     updateActiveTabBadge().catch(console.error);
-  }
-
-  if (areaName === "local" && changes[SETTINGS_KEY]) {
     scheduleTrackingReconcile();
   }
 });
 
 async function restoreAccessAlarms() {
   const { settings, accessUntilBySiteId } = await readState();
-  const knownSiteIds = new Set(settings.sites.map((site) => site.id));
 
-  for (const [siteId, accessUntilValue] of Object.entries(accessUntilBySiteId)) {
+  for (const [accessKey, accessUntilValue] of Object.entries(accessUntilBySiteId)) {
     const accessUntil = Number(accessUntilValue) || 0;
-    if (knownSiteIds.has(siteId) && Date.now() < accessUntil) {
-      browser.alarms.create(`${ALARM_PREFIX}${siteId}`, { when: accessUntil });
+    if (isKnownAccessKey(accessKey, settings) && Date.now() < accessUntil) {
+      browser.alarms.create(`${ALARM_PREFIX}${accessKey}`, { when: accessUntil });
     } else {
-      delete accessUntilBySiteId[siteId];
+      delete accessUntilBySiteId[accessKey];
     }
   }
 

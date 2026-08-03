@@ -1,8 +1,8 @@
 # finally-good-blocker
 
-A deliberately small Firefox extension for blocking whole sites. A blocked site
-can be opened temporarily only by holding a button long enough to earn access
-time.
+A deliberately small Firefox extension with switchable blocklist and
+whitelist-only modes. A disallowed site can be opened temporarily only by
+holding a button long enough to earn access time.
 
 It targets Firefox 142 and newer.
 
@@ -30,17 +30,27 @@ The default rule is:
   seconds of access.
 - Access is wall-clock time, shared by every Firefox tab for that site.
 
-Each site has its own editable copy of those three values.
+Each blocklist site has its own editable copy of those three values. In allowlist
+mode, an unseen disallowed hostname uses the defaults without being saved.
+Optional custom access rules provide the same three editable values for selected
+disallowed hostnames.
 While an unlocked site is active, the extension's toolbar badge counts down its
 remaining access time; hover the icon for the full duration.
 
+The settings-page `blocklist / allowlist` switch remembers an independent list
+for each mode. An empty allowlist intentionally disallows the entire HTTP and
+HTTPS web. Allowed hostnames include their real subdomains. Only top-level page
+navigation is restricted, so an allowed page can still load its images, scripts,
+APIs, and sign-in flows from other hosts.
+
 ## Local site-time history
 
-The extension records time spent on every hostname that has ever been added.
-A visit means a matching page is the active tab in the focused Firefox window.
-Switching tabs, navigating away, closing the tab, or focusing another app ends
-that visit; returning starts another one. Removing a hostname from the block
-list stops blocking it but deliberately keeps tracking it.
+The extension records time only while a currently disallowed site is open through
+a live temporary-access window. Permanently allowed pages, ordinary unconfigured
+pages in blocklist mode, and the extension's blocking screen are not timed. A
+visit means the page is the active tab in the focused Firefox window. Switching
+tabs, navigating away, closing the tab, or focusing another app ends that visit;
+returning starts another one while access remains active.
 
 Each completed visit is kept as its own `siteVisit:<id>` record in Firefox local
 extension storage, containing the configured hostname, start and end times, and
@@ -60,11 +70,9 @@ self-installation requires signing through Mozilla Add-ons.
 
 ## Domain matching and permissions
 
-When a domain is added, Firefox asks for permission to access only that hostname
-and its subdomains. That permission is used to intercept blocked navigation and
-to see when the hostname is the active tab. Removing a blocking rule retains the
-permission because site-time tracking continues. For example, the requested
-WebExtension match pattern for `reddit.com` is:
+In blocklist mode, adding a domain asks Firefox for permission to access only
+that hostname and its subdomains. Removing the rule also removes that permission.
+For example, the requested WebExtension match pattern for `reddit.com` is:
 
 ```text
 *://*.reddit.com/*
@@ -81,10 +89,17 @@ The leading dot in the second comparison means `old.reddit.com` matches while
 `notreddit.com` does not. All HTTP and HTTPS paths match. If rules overlap, the
 longest (most specific) saved hostname wins.
 
-The extension compares navigation and active-tab URLs with locally saved
-hostnames. It stores only the matched hostname and visit timing—not full URLs,
-titles, page contents, clicks, or keystrokes. Nothing is transmitted outside
-Firefox on this device. Uninstalling the extension removes its local storage.
+Enabling allowlist mode asks once for access to all HTTP and HTTPS websites,
+because the extension must see a destination before it can reject an unlisted
+one. Disabling allowlist mode immediately gives up that all-sites permission and
+returns to the remembered per-blocklist permissions. Firefox-internal pages and
+other non-web schemes are outside the restriction.
+
+The extension compares top-level navigation and active-tab URLs with locally
+saved hostnames. It stores only configuration plus the hostname and timing of
+temporary visits—not full URLs, titles, page contents, clicks, or keystrokes.
+Nothing is transmitted outside Firefox on this device. Uninstalling the
+extension removes its local storage.
 
 ## Development
 

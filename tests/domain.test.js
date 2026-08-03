@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  findMostSpecificSite,
   hostnameMatchesSite,
   normalizeHostnameInput,
 } = require("../shared/domain.js");
@@ -29,6 +30,15 @@ test("matches real subdomains", () => {
 test("does not match suffix lookalikes", () => {
   assert.equal(hostnameMatchesSite("notreddit.com", "reddit.com"), false);
   assert.equal(hostnameMatchesSite("reddit.com.example.org", "reddit.com"), false);
+});
+
+test("finds the longest matching saved hostname", () => {
+  const parent = { id: "parent", hostname: "example.com" };
+  const child = { id: "child", hostname: "news.example.com" };
+  assert.equal(
+    findMostSpecificSite("images.news.example.com", [parent, child]),
+    child,
+  );
 });
 
 test("rejects non-web schemes", () => {

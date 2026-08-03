@@ -17,6 +17,7 @@
     "scripts": [
       "shared/domain.js",
       "shared/scheme.js",
+      "shared/settings.js",
       "background.js"
     ]
   },

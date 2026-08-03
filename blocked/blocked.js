@@ -83,17 +83,17 @@ holdButton.addEventListener("keyup", (event) => {
 window.addEventListener("blur", (event) => finishHold(event, true));
 
 browser.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "local" || !changes.accessUntilBySiteId || !site) {
+  if (
+    areaName !== "local" ||
+    (!changes.accessUntilBySiteId && !changes.settings)
+  ) {
     return;
   }
 
-  const accessUntil = Number(changes.accessUntilBySiteId.newValue?.[site.id]) || 0;
-  if (Date.now() < accessUntil) {
-    location.replace(targetUrl);
-  }
+  refreshState().catch((error) => console.error(error));
 });
 
-async function start() {
+async function refreshState() {
   if (!siteId || !requestedTargetUrl) {
     throw new Error("This blocking page is missing its original destination.");
   }
@@ -108,6 +108,11 @@ async function start() {
     throw new Error(response?.error || "Could not load the blocking rule.");
   }
 
+  if (!response.restricted) {
+    location.replace(response.targetUrl);
+    return;
+  }
+
   site = response.site;
   targetUrl = response.targetUrl;
 
@@ -117,7 +122,7 @@ async function start() {
   }
 }
 
-start().catch((error) => {
+refreshState().catch((error) => {
   holdButton.disabled = true;
   console.error(error);
 });
