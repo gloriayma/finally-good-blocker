@@ -137,8 +137,7 @@
 }
 
 #mode-status,
-#form-status,
-#rule-status {
+#form-status {
   margin: 10px 0 0;
 }
 
@@ -164,12 +163,7 @@
   padding-bottom: 10px;
 }
 
-.access-rules-section {
-  margin-top: 78px;
-}
-
-#site-list,
-#rule-list {
+#site-list {
   overflow-x: auto;
 }
 

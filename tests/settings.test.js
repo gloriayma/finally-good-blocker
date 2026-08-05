@@ -13,7 +13,6 @@ test("new settings begin in blocklist mode with separate empty lists", () => {
     mode: BLOCKLIST_MODE,
     blocklistSites: [],
     allowlistSites: [],
-    allowlistAccessRules: [],
   });
 });
 
@@ -35,13 +34,13 @@ test("version 2 keeps both modes' independent lists", () => {
     mode: ALLOWLIST_MODE,
     blocklistSites: [{ id: "blocked", hostname: "social.example" }],
     allowlistSites: [{ id: "allowed", hostname: "work.example" }],
-    allowlistAccessRules: [{ id: "custom", hostname: "news.example", scheme: {} }],
+    allowlistAccessRules: [{ id: "old-custom", hostname: "news.example" }],
   });
 
   assert.equal(normalized.mode, ALLOWLIST_MODE);
   assert.equal(normalized.blocklistSites[0].hostname, "social.example");
   assert.equal(normalized.allowlistSites[0].hostname, "work.example");
-  assert.equal(normalized.allowlistAccessRules[0].hostname, "news.example");
+  assert.equal("allowlistAccessRules" in normalized, false);
 });
 
 test("normalization removes duplicate hostnames within each list", () => {

@@ -160,13 +160,12 @@ const redditSite = {
   },
 };
 
-function allowlistSettings({ allowed = [], rules = [] } = {}) {
+function allowlistSettings({ allowed = [] } = {}) {
   return {
     version: 2,
     mode: "allowlist",
     blocklistSites: [redditSite],
     allowlistSites: allowed,
-    allowlistAccessRules: rules,
   };
 }
 
@@ -321,7 +320,7 @@ test("an unseen allowlist hostname uses defaults without creating a saved rule",
   assert.equal(state.site.scheme.holdThresholdSeconds, 10);
   assert.equal(state.site.scheme.baseAccessSeconds, 30);
   assert.equal(state.site.scheme.accessSecondsPerExtraHoldSecond, 5);
-  assert.deepEqual(app.storage.settings.allowlistAccessRules, []);
+  assert.equal("allowlistAccessRules" in app.storage.settings, false);
 });
 
 test("default allowlist access is shared with subdomains of the encountered hostname", async () => {
@@ -349,34 +348,6 @@ test("default allowlist access is shared with subdomains of the encountered host
     (await app.listeners.beforeRequest({ url: "https://shop.example.com/" })).redirectUrl,
     /blocked\/blocked\.html/,
   );
-});
-
-test("a custom allowlist access rule overrides defaults for its hostname tree", async () => {
-  const app = loadBackground({
-    settings: allowlistSettings({
-      rules: [{
-        id: "example-rule",
-        hostname: "example.com",
-        scheme: {
-          holdThresholdSeconds: 2,
-          baseAccessSeconds: 9,
-          accessSecondsPerExtraHoldSecond: 1,
-        },
-      }],
-    }),
-  });
-
-  const blocked = await app.listeners.beforeRequest({ url: "https://news.example.com/" });
-  const blockedUrl = new URL(blocked.redirectUrl);
-  assert.equal(blockedUrl.searchParams.get("site"), "example-rule");
-
-  const unlock = await app.listeners.message({
-    type: "unlock-site",
-    siteId: "example-rule",
-    targetUrl: "https://news.example.com/",
-    heldMilliseconds: 2_000,
-  });
-  assert.equal(unlock.earnedSeconds, 9);
 });
 
 test("a newly disallowed open tab is redirected only when it is focused again", async () => {

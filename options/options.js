@@ -20,11 +20,6 @@ const siteInput = document.querySelector("#site-input");
 const formStatus = document.querySelector("#form-status");
 const sitesHeading = document.querySelector("#sites-heading");
 const siteList = document.querySelector("#site-list");
-const customRules = document.querySelector("#custom-rules");
-const addRuleForm = document.querySelector("#add-rule-form");
-const ruleInput = document.querySelector("#rule-input");
-const ruleStatus = document.querySelector("#rule-status");
-const ruleList = document.querySelector("#rule-list");
 
 let settings = normalizeSettings();
 let changingMode = false;
@@ -274,15 +269,6 @@ async function removeBlocklistSite(site) {
   render();
 }
 
-async function removeCustomRule(site) {
-  settings.allowlistAccessRules = settings.allowlistAccessRules.filter(
-    (candidate) => candidate.id !== site.id,
-  );
-  await saveSettings();
-  await clearAccessForRule(site.id);
-  render();
-}
-
 function render() {
   const isAllowlist = settings.mode === ALLOWLIST_MODE;
   modeSwitch.dataset.mode = settings.mode;
@@ -294,16 +280,9 @@ function render() {
   modeToggle.disabled = changingMode;
   addHeading.textContent = isAllowlist ? "add an allowed site" : "add a blocked site";
   sitesHeading.textContent = isAllowlist ? "allowed sites" : "blocked sites";
-  customRules.hidden = !isAllowlist;
 
   if (isAllowlist) {
     renderAllowedSites();
-    renderRuleTable(
-      ruleList,
-      settings.allowlistAccessRules,
-      "No custom rules.",
-      removeCustomRule,
-    );
   } else {
     renderRuleTable(
       siteList,
@@ -363,33 +342,6 @@ addForm.addEventListener("submit", async (event) => {
 
   await saveSettings();
   siteInput.value = "";
-  render();
-});
-
-addRuleForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  showStatus(ruleStatus);
-
-  let hostname;
-  try {
-    hostname = normalizeHostnameInput(ruleInput.value);
-  } catch (error) {
-    showStatus(ruleStatus, error.message, true);
-    return;
-  }
-
-  if (settings.allowlistAccessRules.some((site) => site.hostname === hostname)) {
-    showStatus(ruleStatus, `${hostname} already has a custom rule.`, true);
-    return;
-  }
-
-  settings.allowlistAccessRules.push({
-    id: makeId(),
-    hostname,
-    scheme: { ...DEFAULT_SCHEME },
-  });
-  await saveSettings();
-  ruleInput.value = "";
   render();
 });
 

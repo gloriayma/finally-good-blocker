@@ -31,9 +31,7 @@ The default rule is:
 - Access is wall-clock time, shared by every Firefox tab for that site.
 
 Each blocklist site has its own editable copy of those three values. In allowlist
-mode, an unseen disallowed hostname uses the defaults without being saved.
-Optional custom access rules provide the same three editable values for selected
-disallowed hostnames.
+mode, every disallowed hostname uses the defaults without being saved.
 While an unlocked site is active, the extension's toolbar badge counts down its
 remaining access time; hover the icon for the full duration.
 

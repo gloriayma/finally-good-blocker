@@ -53,7 +53,6 @@
           idPrefix: "blocklist",
         }),
         allowlistSites: [],
-        allowlistAccessRules: [],
       };
     }
 
@@ -67,10 +66,6 @@
       allowlistSites: normalizeSites(source.allowlistSites, {
         withScheme: false,
         idPrefix: "allowlist",
-      }),
-      allowlistAccessRules: normalizeSites(source.allowlistAccessRules, {
-        withScheme: true,
-        idPrefix: "allowlist-access",
       }),
     };
   }

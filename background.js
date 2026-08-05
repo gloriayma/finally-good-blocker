@@ -55,16 +55,6 @@ function resolveRestriction(hostname, settings, accessUntilBySiteId = {}) {
     return null;
   }
 
-  const customRule = findMostSpecificSite(hostname, settings.allowlistAccessRules);
-  if (customRule) {
-    return {
-      kind: "allowlist-custom",
-      accessKey: customRule.id,
-      hostname: customRule.hostname,
-      scheme: cleanScheme(customRule.scheme),
-    };
-  }
-
   const temporaryDefaultSites = Object.keys(accessUntilBySiteId)
     .filter((accessKey) => accessKey.startsWith(ALLOWLIST_DEFAULT_ACCESS_PREFIX))
     .map((accessKey) => ({
@@ -133,10 +123,6 @@ function hasTemporaryAccess(restriction, accessUntilBySiteId, now = Date.now()) 
 function isKnownAccessKey(accessKey, settings) {
   if (settings.mode === BLOCKLIST_MODE) {
     return settings.blocklistSites.some((site) => site.id === accessKey);
-  }
-
-  if (settings.allowlistAccessRules.some((site) => site.id === accessKey)) {
-    return true;
   }
 
   if (!accessKey.startsWith(ALLOWLIST_DEFAULT_ACCESS_PREFIX)) {

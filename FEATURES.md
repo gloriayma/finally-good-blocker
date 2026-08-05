@@ -28,12 +28,8 @@ A tab-update enforcement path backs up the pre-navigation web-request hook after
 optional host access is newly granted.
 
 Unlisted hostnames use the existing 10-second hold, 30-second base, and
-5-seconds-per-extra-second defaults without creating a saved rule. A separate
-custom access-rules table lets selected disallowed domains override those three
-values. Default temporary access is shared with subdomains of the hostname that
-was opened; custom rules use the same exact-domain and subdomain matching as
-blocklist rules. The custom-rule add form and empty state use the same compact
-heading, rule, and table rhythm as the rest of the settings page.
+5-seconds-per-extra-second defaults without creating a saved rule. Temporary
+access is shared with subdomains of the hostname that was opened.
 
 Changing modes or removing an allowed hostname does not interrupt the currently
 focused page. If it is now disallowed, it is redirected when the user next
